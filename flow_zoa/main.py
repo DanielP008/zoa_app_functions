@@ -1,5 +1,9 @@
 import functions_framework
 import json
+import firebase_admin
+from firebase_admin import firestore
+
+firebase_admin.initialize_app()
 
 @functions_framework.http
 def main(request):
@@ -72,6 +76,9 @@ def main(request):
     elif action  == "scheduler":
         from models.scheduler import ZoaScheduler
         client = ZoaScheduler(token) 
+    elif action  == "departments":
+        from models.departments import ZoaDepartment
+        client = ZoaDepartment(token) 
     else:
         return {"error": f"Action '{action}' not recognized"}, 404
 
