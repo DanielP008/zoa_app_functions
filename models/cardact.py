@@ -6,7 +6,7 @@ from tags import ZoaTags
 class ZoaCardAct:
     def __init__(self, token):
         self.token = token
-        self.api_base = "https://api.zoasuite.com/api"
+        self.api_base = "https://dev.api.zoasuite.com/api"
         self.headers = {
             "Content-Type": "application/json",
             "Accept": "application/json",
@@ -15,6 +15,19 @@ class ZoaCardAct:
         self.contact_manager = ZoaContact(token)
         self.user_manager = ZoaUser(token)
         self.tag_manager = ZoaTags(token)
+    
+    def _resolve_user_id_by_name(self, name):
+        """Busca un usuario por nombre y devuelve su ID."""
+        if not name:
+            return None
+        u_res, u_status = self.user_manager.search({"name": name})
+        if u_status == 200:
+            u_data = u_res.get("data")
+            if isinstance(u_data, list) and u_data:
+                return u_data[0].get("id")
+            elif isinstance(u_data, dict):
+                return u_data.get("id")
+        return None
 
     def _resolve_tag_ids(self, tags_name):
         """Convierte nombres de tags en una lista de IDs (UUIDs)."""
@@ -176,12 +189,15 @@ class ZoaCardAct:
             # --- PARTE 1: CREACIÓN DE LA CARD ---
             c_type = request_json.get("card_type") or "opportunity"
             p_id, s_id = self._get_context_ids(
-                "Principal", 
-                "Nuevo",
+                request_json.get("pipeline_name"), 
+                request_json.get("stage_name"),
                 c_type
             )
             
             if not s_id: return {"error": f"No se pudo determinar la etapa para {c_type}"}, 404
+
+            # Resolver el ID del Manager (el responsable de la card)
+            resolved_manager_id = self._resolve_user_id_by_name(request_json.get("manager_name"))
 
             c_res, c_status = self.contact_manager.search(request_json)
             contact_id = None
@@ -194,14 +210,15 @@ class ZoaCardAct:
             tag_ids = self._resolve_tag_ids(request_json.get("tags_name"))
 
             card_payload = {
-                "stage_id": s_id, #not null
-                "pipeline_id": p_id, #not null
-                "title": request_json.get("title"), # not null
+                "stage_id": s_id,
+                "pipeline_id": p_id,
+                "title": request_json.get("title"), # Título de la Card
                 "contact_id": contact_id,
-                "card_type": c_type, #not null
+                "card_type": c_type,
                 "amount": float(request_json.get("amount") or 0),
                 "tag_id": tag_ids,
-                "description": request_json.get("description")
+                "description": request_json.get("description"),
+                "user_id": resolved_manager_id
             }
             
             response_card = requests.post(f"{self.api_base}/pipelines/cards", headers=self.headers, json=card_payload)
@@ -223,12 +240,12 @@ class ZoaCardAct:
                 guests_ids = self._resolve_guests_ids(request_json.get("guests_names"))
                 
                 activity_payload = {
-                    "title": activity_title, #not null
-                    "type_of_activity": request_json.get("type_of_activity", "llamada"), #not null
+                    "title": activity_title,
+                    "type_of_activity": request_json.get("type_of_activity", "llamada"),
                     "contact_id": contact_id,
-                    "card_id": card_id, # not null
-                    "type": request_json.get("type", "sales"), 
-                    "date": request_json.get("date"), #not null
+                    "card_id": card_id, # ASOCIACIÓN AQUÍ
+                    "type": request_json.get("type", "sales"),
+                    "date": request_json.get("date"),
                     "start_time": request_json.get("start_time"),
                     "duration": str(request_json.get("duration") or "30"),
                     "description": request_json.get("activity_description") or request_json.get("description"),
