@@ -176,8 +176,8 @@ class ZoaCardAct:
             # --- PARTE 1: CREACIÓN DE LA CARD ---
             c_type = request_json.get("card_type") or "opportunity"
             p_id, s_id = self._get_context_ids(
-                request_json.get("pipeline_name"), 
-                request_json.get("stage_name"),
+                "Principal", 
+                "Nuevo",
                 c_type
             )
             
