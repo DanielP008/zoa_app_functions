@@ -61,9 +61,9 @@ class ZoaConversation:
         if msg_type == "text":
             endpoint = "/waba/messages/send/text"
             final_payload = {
-                "phone_number_id": str(company_id),
-                "conversation_id": request_json.get("conversation_id") or request_json.get("conv_id"),
-                "text": request_json.get("text"),
+                "phone_number_id": str(company_id), #not null
+                "conversation_id": request_json.get("conversation_id") or request_json.get("conv_id"), #not null
+                "text": request_json.get("text"), #not null
                 "image": request_json.get("image") or empty_obj,
                 "audio": request_json.get("audio") or empty_obj,
                 "video": request_json.get("video") or empty_obj,
@@ -88,11 +88,11 @@ class ZoaConversation:
                 btn_list = raw_buttons
 
             final_payload = {
-                "phone_number_id": str(company_id),
-                "to": request_json.get("to") or request_json.get("phone"),
-                "text": request_json.get("text"),
+                "phone_number_id": str(company_id), #not null
+                "to": request_json.get("to") or request_json.get("phone"), #not null
+                "text": request_json.get("text"), #not null
                 "buttons": btn_list,
-                "conversation_id": request_json.get("conversation_id") or request_json.get("conv_id")
+                "conversation_id": request_json.get("conversation_id") or request_json.get("conv_id") #not null
             }
             
             # Limpiamos si no hay conversation_id para evitar errores de validación
@@ -109,16 +109,16 @@ class ZoaConversation:
                 return {"error": f"Template '{template_name}' no encontrado"}, 404
 
             final_payload = {
-                "to": request_json.get("to") or request_json.get("phone"),
-                "template_id": str(template_id),
+                "to": request_json.get("to") or request_json.get("phone"), #not null
+                "template_id": str(template_id), #not null
                 "data": request_json.get("data") or {
-                    "body": request_json.get("body") or [],
+                    "body": request_json.get("body") or [], #not null
                     "button": request_json.get("button") or [],
                     "header": request_json.get("header") or [],
                     "document_name": request_json.get("document_name"),
                     "header_type": request_json.get("header_type", "")
                 },
-                "phone_number_id": str(company_id)
+                "phone_number_id": str(company_id) #not null
             }
 
         else:

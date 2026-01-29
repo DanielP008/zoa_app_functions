@@ -194,11 +194,11 @@ class ZoaCardAct:
             tag_ids = self._resolve_tag_ids(request_json.get("tags_name"))
 
             card_payload = {
-                "stage_id": s_id,
-                "pipeline_id": p_id,
-                "title": request_json.get("title"), # Título de la Card
+                "stage_id": s_id, #not null
+                "pipeline_id": p_id, #not null
+                "title": request_json.get("title"), # not null
                 "contact_id": contact_id,
-                "card_type": c_type,
+                "card_type": c_type, #not null
                 "amount": float(request_json.get("amount") or 0),
                 "tag_id": tag_ids,
                 "description": request_json.get("description")
@@ -223,12 +223,12 @@ class ZoaCardAct:
                 guests_ids = self._resolve_guests_ids(request_json.get("guests_names"))
                 
                 activity_payload = {
-                    "title": activity_title,
-                    "type_of_activity": request_json.get("type_of_activity", "llamada"),
+                    "title": activity_title, #not null
+                    "type_of_activity": request_json.get("type_of_activity", "llamada"), #not null
                     "contact_id": contact_id,
-                    "card_id": card_id, # ASOCIACIÓN AQUÍ
-                    "type": request_json.get("type", "sales"),
-                    "date": request_json.get("date"),
+                    "card_id": card_id, # not null
+                    "type": request_json.get("type", "sales"), 
+                    "date": request_json.get("date"), #not null
                     "start_time": request_json.get("start_time"),
                     "duration": str(request_json.get("duration") or "30"),
                     "description": request_json.get("activity_description") or request_json.get("description"),

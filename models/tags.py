@@ -34,7 +34,7 @@ class ZoaTags:
         tag_type = request_json.get("type", "sales") 
         
         payload = {
-            "name": request_json.get("name"),
+            "name": request_json.get("name"), #not null
             "type": tag_type,
             "color": request_json.get("color", "#04A37C")
         }
