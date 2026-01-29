@@ -55,6 +55,9 @@ def main(request):
     elif action == "cards":
         from models.cards import ZoaCard
         client = ZoaCard(token)
+    elif action == "cardact":
+        from models.cardact import ZoaCardAct
+        client = ZoaCardAct(token)
     elif action == "activities":
         from models.activities import ZoaActivity
         client = ZoaActivity(token)
@@ -102,6 +105,8 @@ def main(request):
             result, status = client.assign(request_json)
         elif option == "status":
             result, status = client.status(request_json)
+        elif option == "assign_status":
+            result, status = client.assign_status(request_json)
         else:
             return {"error": f"Option '{option}' is not valid for action '{action}'"}, 400
 
