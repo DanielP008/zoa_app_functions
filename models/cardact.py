@@ -61,73 +61,98 @@ class ZoaCardAct:
 
     def _get_context_ids(self, p_name, s_name, card_type):
         """
-        Versión ultra-diagnostic para identificar por qué se queda colgado.
+        Obtiene pipeline_id y stage_id para crear/actualizar cards.
+        Para card_type=task usa type=management; para opportunity usa type=sales.
         """
-        # Cambiamos el orden: primero management porque es lo que vimos en tus imágenes
         c_type_lower = str(card_type).lower()
         p_type = "management" if c_type_lower == "task" else "sales"
-        
-        print(f"DEBUG: Intentando llamar a ZOA API. Tipo: {p_type}")
-        
+
+        print(f"[CARDACT_DEBUG] _get_context_ids | card_type={card_type!r} -> p_type={p_type!r} | pipeline_name={p_name!r} | stage_name={s_name!r}")
+
         try:
             url = f"{self.api_base}/pipelines/pipelines?type={p_type}"
-            # Bajamos el timeout para que no se quede colgado el contenedor
-            response = requests.get(url, headers=self.headers, timeout=5)
-            
-            print(f"DEBUG: Respuesta recibida. Status Code: {response.status_code}")
-            
+            print(f"[CARDACT_DEBUG] GET {url}")
+            response = requests.get(url, headers=self.headers, timeout=10)
+
+            print(f"[CARDACT_DEBUG] Response status={response.status_code}")
+
             if response.status_code != 200:
-                print(f"DEBUG: Error en API. Texto: {response.text[:100]}")
+                print(f"[CARDACT_DEBUG] API error body (first 500 chars): {response.text[:500]}")
                 return None, None
-            
+
             res_json = response.json()
-            data = res_json.get('data', [])
-            print(f"DEBUG: Cantidad de pipelines encontrados: {len(data)}")
+            data = res_json.get("data", [])
+            print(f"[CARDACT_DEBUG] Pipelines returned for type={p_type!r}: count={len(data)}")
 
             if not data:
-                # Si management falla, probamos con 'task' como último recurso
-                print("DEBUG: Lista vacía. Reintentando con tipo 'task'...")
+                print(f"[CARDACT_DEBUG] No pipelines for type={p_type!r}. Trying type=task...")
                 url_alt = f"{self.api_base}/pipelines/pipelines?type=task"
-                response = requests.get(url_alt, headers=self.headers, timeout=5)
-                data = response.json().get('data', [])
-            
+                response = requests.get(url_alt, headers=self.headers, timeout=10)
+                if response.status_code == 200:
+                    data = response.json().get("data", [])
+                    print(f"[CARDACT_DEBUG] Pipelines for type=task: count={len(data)}")
+                else:
+                    data = []
+
             if not data:
-                print("DEBUG: Sigue sin haber datos. Abortando.")
+                print("[CARDACT_DEBUG] No pipelines found for management nor task. Cannot determine stage.")
                 return None, None
 
-            # 1. Pipeline
+            # Log pipeline names and IDs for diagnosis
+            for i, p in enumerate(data):
+                name = p.get("name") or p.get("title") or "(sin nombre)"
+                pid = p.get("id")
+                stages = p.get("stages") or []
+                stage_names = [str(s.get("title") or s.get("name") or "(sin nombre)") for s in stages]
+                print(f"[CARDACT_DEBUG] Pipeline[{i}] id={pid} name={name!r} stages={stage_names!r}")
+
+            # 1. Select pipeline by name or first
             pipeline = None
             if p_name:
-                pipeline = next((p for p in data if str(p.get('name','')).lower().strip() == str(p_name).lower().strip()), None)
-            
+                p_name_clean = str(p_name).lower().strip()
+                for p in data:
+                    n = str(p.get("name") or p.get("title") or "").lower().strip()
+                    if n == p_name_clean:
+                        pipeline = p
+                        break
+                if not pipeline:
+                    print(f"[CARDACT_DEBUG] No pipeline named {p_name!r}. Available: {[p.get('name') or p.get('title') for p in data]}")
+
             if not pipeline:
                 pipeline = data[0]
-                print(f"DEBUG: Seleccionado pipeline por defecto: {pipeline.get('name')}")
+                print(f"[CARDACT_DEBUG] Using first pipeline: name={pipeline.get('name')!r} id={pipeline.get('id')}")
 
-            # 2. Stage
-            stages = pipeline.get('stages', [])
+            # 2. Select stage by name or first
+            stages = pipeline.get("stages") or []
             stage_obj = None
             search_term = str(s_name).lower().strip() if s_name else ""
-            
-            # Buscamos de forma flexible
-            for s in stages:
-                title_s = str(s.get('title') or "").lower().strip()
-                name_s = str(s.get('name') or "").lower().strip()
-                if search_term in [title_s, name_s]:
-                    stage_obj = s
-                    break
-            
+
+            if search_term:
+                for s in stages:
+                    title_s = str(s.get("title") or "").lower().strip()
+                    name_s = str(s.get("name") or "").lower().strip()
+                    if search_term == title_s or search_term == name_s or search_term in (title_s, name_s):
+                        stage_obj = s
+                        print(f"[CARDACT_DEBUG] Stage matched: title={s.get('title')!r} name={s.get('name')!r} id={s.get('id')}")
+                        break
+                if not stage_obj:
+                    available = [f"title={s.get('title')!r} name={s.get('name')!r}" for s in stages]
+                    print(f"[CARDACT_DEBUG] No stage matched {s_name!r}. Available: {available}")
+
             if not stage_obj and stages:
                 stage_obj = stages[0]
-                print(f"DEBUG: Usando primera columna como fallback")
+                print(f"[CARDACT_DEBUG] Using first stage: title={stage_obj.get('title')!r} id={stage_obj.get('id')}")
 
-            return pipeline.get('id'), stage_obj.get('id') if stage_obj else None
-            
+            p_id = pipeline.get("id")
+            s_id = stage_obj.get("id") if stage_obj else None
+            print(f"[CARDACT_DEBUG] Result: pipeline_id={p_id} stage_id={s_id}")
+            return p_id, s_id
+
         except requests.exceptions.Timeout:
-            print("ERROR: La API de ZOA tardó demasiado en responder (Timeout)")
+            print("[CARDACT_DEBUG] Timeout calling ZOA pipelines API")
             return None, None
         except Exception as e:
-            print(f"ERROR inesperado en _get_context_ids: {str(e)}")
+            print(f"[CARDACT_DEBUG] Exception in _get_context_ids: {type(e).__name__}: {e}")
             return None, None
 
 
