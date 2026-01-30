@@ -1,9 +1,9 @@
 import requests
 
 class ZoaTags:
-    def __init__(self, token):
-        from config import API_BASE
-        self.token = token
+    def __init__(self, token=None):
+        from config import API_BASE, TOKEN
+        self.token = token or TOKEN
         self.api_base = API_BASE
         self.headers = {
             "Content-Type": "application/json",
@@ -35,7 +35,7 @@ class ZoaTags:
         tag_type = request_json.get("type", "sales") 
         
         payload = {
-            "name": request_json.get("name"), #not null
+            "name": request_json.get("name"),
             "type": tag_type,
             "color": request_json.get("color", "#04A37C")
         }

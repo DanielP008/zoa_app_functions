@@ -5,18 +5,19 @@ from models.cards import ZoaCard
 from models.users import ZoaUser
 
 class ZoaNote:
-    def __init__(self, token):
-        self.token = token
-        self.api_base = "https://api.zoasuite.com/api"
+    def __init__(self, token=None):
+        from config import API_BASE, TOKEN
+        self.token = token or TOKEN
+        self.api_base = API_BASE
         self.headers = {
             "Content-Type": "application/json",
             "Accept": "application/json",
             "apiKey": f"{self.token}"
         }
         # Instanciamos el manager de contactos para usar su búsqueda
-        self.contact_manager = ZoaContact(token)
-        self.card_manager = ZoaCard(token)
-        self.user_manager = ZoaUser(token)
+        self.contact_manager = ZoaContact(self.token)
+        self.card_manager = ZoaCard(self.token)
+        self.user_manager = ZoaUser(self.token)
         
     def _get_contact_id(self, request_json):
         """

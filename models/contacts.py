@@ -2,16 +2,16 @@ import requests
 from models.users import ZoaUser
 
 class ZoaContact:
-    def __init__(self, token):
-        from config import API_BASE
-        self.token = token
+    def __init__(self, token=None):
+        from config import API_BASE, TOKEN
+        self.token = token or TOKEN
         self.api_base = API_BASE
         self.headers = {
             "Content-Type": "application/json",
             "Accept": "application/json",
             "apiKey": f"{self.token}"
         }
-        self.user_manager = ZoaUser(token)
+        self.user_manager = ZoaUser(self.token)
         
 
     def search(self, request_json):

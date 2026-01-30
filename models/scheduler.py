@@ -2,9 +2,10 @@ import firebase_admin
 from firebase_admin import firestore
 
 class ZoaScheduler:
-    def __init__(self, token):
-        self.token = token
-        self.api_base = "https://api.zoasuite.com/api"
+    def __init__(self, token=None):
+        from config import API_BASE, TOKEN
+        self.token = token or TOKEN
+        self.api_base = API_BASE
         self.headers = {
             "Content-Type": "application/json",
             "Accept": "application/json",

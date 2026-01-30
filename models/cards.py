@@ -4,17 +4,18 @@ from models.users import ZoaUser
 from models.tags import ZoaTags
 
 class ZoaCard:
-    def __init__(self, token):
-        self.token = token
-        self.api_base = "https://api.zoasuite.com/api"
+    def __init__(self, token=None):
+        from config import API_BASE, TOKEN
+        self.token = token or TOKEN
+        self.api_base = API_BASE
         self.headers = {
             "Content-Type": "application/json",
             "Accept": "application/json",
             "apiKey": f"{self.token}"
         }
-        self.contact_manager = ZoaContact(token)
-        self.user_manager = ZoaUser(token)
-        self.tag_manager = ZoaTags(token)
+        self.contact_manager = ZoaContact(self.token)
+        self.user_manager = ZoaUser(self.token)
+        self.tag_manager = ZoaTags(self.token)
 
     def _resolve_tag_ids(self, tags_name):
         """Convierte nombres de tags en una lista de IDs (UUIDs)."""

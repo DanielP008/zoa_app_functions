@@ -3,134 +3,115 @@ import json
 import firebase_admin
 from firebase_admin import firestore
 
-firebase_admin.initialize_app()
+# Inicialización de Firebase (opcional si no usas Firestore en este script, pero mantenida por compatibilidad)
+if not firebase_admin._apps:
+    firebase_admin.initialize_app()
 
 @functions_framework.http
 def main(request):
-    # --- 0. Debug completo de entrada ---
-    try:
-        raw_body = request.get_data(as_text=True)
-    except Exception:
-        raw_body = "<unavailable>"
-    print("[FLOW_ZOA_DEBUG] request.method:", request.method)
-    print("[FLOW_ZOA_DEBUG] request.path:", getattr(request, "path", ""))
-    print("[FLOW_ZOA_DEBUG] request.args:", request.args.to_dict(flat=True) if hasattr(request, "args") else {})
-    print("[FLOW_ZOA_DEBUG] request.headers:", dict(request.headers) if hasattr(request, "headers") else {})
-    print("[FLOW_ZOA_DEBUG] request.raw_body:", raw_body)
-    print("[FLOW_ZOA_DEBUG] request.json:", request.get_json(silent=True))
-
-    # --- 1. Gestión de CORS ---
+    # --- 1. Gestión de CORS (Crucial para evitar bloqueos) ---
     if request.method == 'OPTIONS':
         headers = {
             'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Methods': 'POST',
-            'Access-Control-Allow-Headers': 'Content-Type',
+            'Access-Control-Allow-Headers': 'Content-Type, apiKey',
             'Access-Control-Max-Age': '3600'
         }
         return ('', 204, headers)
 
-    headers = {'Access-Control-Allow-Origin': '*'}
+    # Headers de respuesta estándar
+    res_headers = {'Access-Control-Allow-Origin': '*'}
 
-    # --- 2. Validación Básica del Request ---
+    # --- 2. Validación del JSON de entrada ---
     request_json = request.get_json(silent=True)
     if not request_json:
-        print("ERROR: No se recibió request_json JSON")
-        return ({"error": "request_json missing"}, 400, headers)
+        print("ERROR: No se recibió JSON válido")
+        return ({"error": "JSON body missing"}, 400, res_headers)
 
-    # Validamos que venga la acción y la opción
-    if not request_json.get("action") or not request_json.get("option"):
-        return ({"error": "Faltan campos obligatorios: 'action' u 'option'"}, 400, headers)
-
-    # Validamos que venga AL MENOS un identificador de compañía
-    company_id = request_json.get("company_id")
-    
-    if not company_id:
-        print("ALERTA: Falta company_id")
-        return ({"error": "Se requiere 'company_id'"}, 400, headers)
-
-    # --- 3. Token ---
-    from config import API_BASE, TOKEN
-    token = TOKEN
-    
+    # Validamos campos obligatorios
     action = request_json.get("action")
     option = request_json.get("option")
+    company_id = request_json.get("company_id")
 
+    if not action or not option:
+        return ({"error": "Faltan campos obligatorios: 'action' u 'option'"}, 400, res_headers)
 
+    if not company_id:
+        print("ALERTA: Falta company_id")
+        return ({"error": "Se requiere 'company_id'"}, 400, res_headers)
 
-    # 1. Asignación del Cliente según la acción
+    # --- 3. Gestión del Token (Producción) ---
+    from config import TOKEN
+    token = TOKEN
+
+    # --- 4. Enrutamiento de Acciones (Asignación del Cliente) ---
     client = None
-    if action == "contacts":
-        from models.contacts import ZoaContact
-        client = ZoaContact(token)
-    elif action == "users":
-        from models.users import ZoaUser
-        client = ZoaUser(token)
-    elif action == "cards":
-        from models.cards import ZoaCard
-        client = ZoaCard(token)
-    elif action == "cardact":
-        from models.cardact import ZoaCardAct
-        client = ZoaCardAct(token)
-    elif action == "activities":
-        from models.activities import ZoaActivity
-        client = ZoaActivity(token)
-    elif action == "readall":
-        from models.readall import ZoaReadAll
-        client = ZoaReadAll(token)
-    elif action == "email_module":
-        from models.email_module import ZoaEmail
-        client = ZoaEmail(token)
-    elif action == "conversations":
-        from models.conversations import ZoaConversation
-        client = ZoaConversation(token)
-    elif action == "notes":
-        from models.notes import ZoaNote
-        client = ZoaNote(token)
-    elif action == "tags":
-        from models.tags import ZoaTags
-        client = ZoaTags(token)  
-    elif action  == "scheduler":
-        from models.scheduler import ZoaScheduler
-        client = ZoaScheduler(token) 
-    elif action  == "departments":
-        from models.departments import ZoaDepartment
-        client = ZoaDepartment(token) 
-    else:
-        return {"error": f"Action '{action}' not recognized"}, 404
-
-
-
-    # 2. Ejecución generalizada de la opción
-    #APUNTES: Si intentaras ejecutar manager.create() sobre el módulo de usuarios, el programa se rompería (daría un error de tipo AttributeError).
-    #Con hasattr, el código comprueba: "¿Este manager que acabo de cargar tiene permiso para crear?".
-    #Si la respuesta es no, salta al else y devuelve un error amigable en lugar de colapsar la función.
     try:
-        if option == "search":
-            result, status = client.search(request_json)
-        elif option == "create":  
-            result, status = client.create(request_json)
-        elif option == "update":
-            result, status = client.update(request_json)
-            
-        elif option == "send":
-            result, status = client.send(request_json)
-        elif option == "assign":
-            result, status = client.assign(request_json)
-        elif option == "status":
-            result, status = client.status(request_json)
-        elif option == "assign_status":
-            result, status = client.assign_status(request_json)
-        else:
-            return {"error": f"Option '{option}' is not valid for action '{action}'"}, 400
+        match action:
+            case "contacts":
+                from models.contacts import ZoaContact
+                client = ZoaContact(token)
+            case "users":
+                from models.users import ZoaUser
+                client = ZoaUser(token)
+            case "cards":
+                from models.cards import ZoaCard
+                client = ZoaCard(token)
+            case "cardact":
+                from models.cardact import ZoaCardAct
+                client = ZoaCardAct(token)
+            case "activities":
+                from models.activities import ZoaActivity
+                client = ZoaActivity(token)
+            case "departments":
+                from models.departments import ZoaDepartment
+                client = ZoaDepartment(token)
+            case "tags":
+                from models.tags import ZoaTags
+                client = ZoaTags(token)
+            case "readall":
+                from models.readall import ZoaReadAll
+                client = ZoaReadAll(token)
+            case "email_module":
+                from models.email_module import ZoaEmail
+                client = ZoaEmail(token)
+            case "conversations":
+                from models.conversations import ZoaConversation
+                client = ZoaConversation(token)
+            case "notes":
+                from models.notes import ZoaNote
+                client = ZoaNote(token)
+            case "scheduler":
+                from models.scheduler import ZoaScheduler
+                client = ZoaScheduler(token)
+            case _:
+                return ({"error": f"Acción '{action}' no reconocida"}, 404, res_headers)
 
-        return (result, status, headers)
-    #Si no devuelves los headers en cada respuesta, cuando tu código falle (por ejemplo, un error 400), el navegador del cliente bloqueará la respuesta por seguridad (error de CORS).
-    #Al ponerlo en el return, aseguras que el cliente siempre pueda leer el mensaje de error, sea cual sea el resultado.
+        # --- 5. Ejecución de la Opción ---
+        match option:
+            case "search":
+                result, status = client.search(request_json)
+            case "create":
+                result, status = client.create(request_json)
+            case "update":
+                result, status = client.update(request_json)
+            case "send":
+                result, status = client.send(request_json)
+            case "assign":
+                result, status = client.assign(request_json)
+            case "status":
+                result, status = client.status(request_json)
+            case "assign_status":
+                result, status = client.assign_status(request_json)
+            case _:
+                return ({"error": f"Opción '{option}' no válida para '{action}'"}, 400, res_headers)
+
+        # Retorno exitoso
+        return (result, status, res_headers)
 
     except Exception as e:
-
-        print(f"ERROR CRÍTICO: {str(e)}")
+        print(f"ERROR CRÍTICO EN MAIN: {str(e)}")
         return ({
-            "error": "Internal Server Error", 
+            "error": "Internal Server Error",
             "details": str(e)
-        }, 500, headers) # <--- Asegúrate de devolver los 3 elementos
+        }, 500, res_headers)

@@ -2,9 +2,9 @@ import requests
 from urllib.parse import quote
 
 class ZoaUser:
-    def __init__(self, token):
-        from config import API_BASE
-        self.token = token
+    def __init__(self, token=None):
+        from config import API_BASE, TOKEN
+        self.token = token or TOKEN
         self.api_base = API_BASE
         self.base_url = f"{self.api_base}/pipelines/users"
         self.headers = {

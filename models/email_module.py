@@ -1,9 +1,10 @@
 import requests
 
 class ZoaEmail:
-    def __init__(self, token):
-        self.token = token
-        self.api_base = "https://api.zoasuite.com/api/email/send"
+    def __init__(self, token=None):
+        from config import API_BASE, TOKEN
+        self.token = token or TOKEN
+        self.api_base = f"{API_BASE}/email/send"
         self.headers = {
             "Authorization": f"Bearer {self.token}",
             "Content-Type": "application/json",

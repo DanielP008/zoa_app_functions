@@ -2,15 +2,16 @@ import requests
 from models.contacts import ZoaContact
 
 class ZoaDepartment:
-    def __init__(self, token):
-        self.token = token
-        self.api_base = "https://api.zoasuite.com/api"
+    def __init__(self, token=None):
+        from config import API_BASE, TOKEN
+        self.token = token or TOKEN
+        self.api_base = API_BASE
         self.headers = {
             "Content-Type": "application/json",
             "Accept": "application/json",
             "apiKey": f"{self.token}"
         }
-        self.contact_manager = ZoaContact(token)
+        self.contact_manager = ZoaContact(self.token)
 
     def search(self, request_json):
         mobile = request_json.get("phone") or request_json.get("mobile")

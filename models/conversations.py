@@ -1,16 +1,17 @@
 import requests
-from users import ZoaUser
+from models.users import ZoaUser
 
 class ZoaConversation:
-    def __init__(self, token):
-        self.token = str(token).strip()
-        self.api_base = "https://dev.api.zoasuite.com/api"
+    def __init__(self, token=None):
+        from config import API_BASE, TOKEN
+        self.token = str(token or TOKEN).strip()
+        self.api_base = API_BASE
         self.headers = {
             "Content-Type": "application/json",
             "Accept": "application/json",
             "apiKey": self.token
         }
-        self.user_manager = ZoaUser(token)
+        self.user_manager = ZoaUser(self.token)
 
     def _get_template_id_by_name(self, template_name, company_id):
         """Busca el ID del template."""
