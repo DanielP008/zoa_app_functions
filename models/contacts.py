@@ -24,9 +24,11 @@ class ZoaContact:
         search_path = f"{self.api_base}/pipelines/contacts"
         
         if phone and str(phone).strip():
-            # Limpiamos el teléfono: quitamos espacios y el '+' para la URL
+            # Limpiamos el teléfono: quitamos espacios y aseguramos que tenga el '+'
             clean_phone = str(phone).strip().replace(" ", "")
-            # Si la API de ZOA requiere el +, déjalo. Si no, usa: clean_phone.replace("+", "")
+            if not clean_phone.startswith("+"):
+                clean_phone = "+" + clean_phone
+            
             url = f"{search_path}/mobile/{clean_phone}"
         elif nif and str(nif).strip():
             url = f"{search_path}/nif/{nif.strip()}"
