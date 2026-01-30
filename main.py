@@ -7,6 +7,18 @@ firebase_admin.initialize_app()
 
 @functions_framework.http
 def main(request):
+    # --- 0. Debug completo de entrada ---
+    try:
+        raw_body = request.get_data(as_text=True)
+    except Exception:
+        raw_body = "<unavailable>"
+    print("[FLOW_ZOA_DEBUG] request.method:", request.method)
+    print("[FLOW_ZOA_DEBUG] request.path:", getattr(request, "path", ""))
+    print("[FLOW_ZOA_DEBUG] request.args:", request.args.to_dict(flat=True) if hasattr(request, "args") else {})
+    print("[FLOW_ZOA_DEBUG] request.headers:", dict(request.headers) if hasattr(request, "headers") else {})
+    print("[FLOW_ZOA_DEBUG] request.raw_body:", raw_body)
+    print("[FLOW_ZOA_DEBUG] request.json:", request.get_json(silent=True))
+
     # --- 1. Gestión de CORS ---
     if request.method == 'OPTIONS':
         headers = {
