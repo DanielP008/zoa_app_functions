@@ -61,9 +61,13 @@ class ZoaConversation:
         # --- CASO TEXTO ---
         if msg_type == "text":
             endpoint = "/waba/messages/send/text"
+            
+            # 1. Intentamos obtener el ID de todas las formas posibles
+            conv_id = self._get_conversation_id(request_json)
+            
             final_payload = {
                 "phone_number_id": str(company_id),
-                "conversation_id": request_json.get("conversation_id") or request_json.get("conv_id"),
+                "conversation_id": conv_id, 
                 "text": request_json.get("text"),
                 "image": request_json.get("image") or empty_obj,
                 "audio": request_json.get("audio") or empty_obj,
@@ -73,9 +77,12 @@ class ZoaConversation:
                 "sticker": request_json.get("sticker") or empty_obj,
                 "context": request_json.get("context") or empty_obj
             }
+
+            # Si el conv_id sigue vacío, ZOA dará error, 
+            # así que como último recurso lo armamos manual aquí
             if not final_payload["conversation_id"]:
-                final_payload["to"] = request_json.get("to") or request_json.get("phone")
-                del final_payload["conversation_id"]
+                phone_raw = str(request_json.get("phone") or "").replace("+", "").strip()
+                final_payload["conversation_id"] = f"{company_id}_{phone_raw}"
 
         # --- CASO BOTONES ---
         elif msg_type == "buttons_text":
