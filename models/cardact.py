@@ -1,4 +1,5 @@
 import requests
+from datetime import datetime
 from models.contacts import ZoaContact
 from models.users import ZoaUser
 from models.tags import ZoaTags
@@ -239,14 +240,19 @@ class ZoaCardAct:
             if request_json.get("type_of_activity"):
                 guests_ids = self._resolve_guests_ids(request_json.get("guests_names"))
                 
+                # Default to current date and time if not provided
+                now = datetime.now()
+                default_date = now.strftime("%Y-%m-%d")
+                default_time = now.strftime("%H:%M")
+
                 activity_payload = {
                     "title": activity_title,
                     "type_of_activity": request_json.get("type_of_activity", "llamada"),
                     "contact_id": contact_id,
                     "card_id": card_id, # ASOCIACIÓN AQUÍ
                     "type": request_json.get("type", "sales"),
-                    "date": request_json.get("date"),
-                    "start_time": request_json.get("start_time"),
+                    "date": request_json.get("date") or default_date,
+                    "start_time": request_json.get("start_time") or default_time,
                     "duration": str(request_json.get("duration") or "30"),
                     "description": request_json.get("activity_description") or request_json.get("description"),
                     "guests": guests_ids,
