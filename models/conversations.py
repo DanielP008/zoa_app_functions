@@ -14,22 +14,32 @@ class ZoaConversation:
         self.user_manager = ZoaUser(self.token)
 
     def _get_template_id_by_name(self, template_name, company_id):
-        """Busca el ID del template."""
+        """Busca el ID del template de forma segura."""
         if not company_id:
             return None
+        
+        # Intentamos con /waba/templates o /api/waba/templates según tu config
         url = f"{self.api_base}/waba/templates?phone_number_id={company_id}"
+        
         try:
-            response = requests.get(url, headers=self.headers)
+            print(f"DEBUG: Consultando templates en {url}")
+            response = requests.get(url, headers=self.headers, timeout=10)
+            
             if response.status_code == 200:
                 res_json = response.json()
-                templates = res_json.get("data", [])
-                for t in templates:
-                    if t.get("name") == template_name:
-                        return t.get("id")
+                # ZOA a veces devuelve la lista en 'data' o directamente en el body
+                templates = res_json.get("data") if isinstance(res_json.get("data"), list) else res_json
+                
+                if isinstance(templates, list):
+                    for t in templates:
+                        if t.get("name") == template_name:
+                            return t.get("id")
+            
+            print(f"DEBUG: ZOA respondió {response.status_code} al buscar templates")
             return None
-        except Exception:
+        except Exception as e:
+            print(f"DEBUG: Error buscando template: {str(e)}")
             return None
-        
     def _get_conversation_id(self, request_json):
         """Genera el ID exacto: {company_id}_{phone_sin_mas}"""
         conv_id = request_json.get("conversation_id") or request_json.get("id")
