@@ -24,12 +24,34 @@ class ZoaContact:
         search_path = f"{self.api_base}/pipelines/contacts"
         
         if phone and str(phone).strip():
-            # Limpiamos el teléfono: quitamos espacios y aseguramos que tenga el '+'
-            clean_phone = str(phone).strip().replace(" ", "")
-            if not clean_phone.startswith("+"):
-                clean_phone = "+" + clean_phone
+            # Limpiamos el teléfono
+            raw_phone = str(phone).strip().replace(" ", "")
+            # Intentamos primero CON el '+'
+            clean_phone_plus = raw_phone if raw_phone.startswith("+") else "+" + raw_phone
+            url = f"{search_path}/mobile/{clean_phone_plus}"
             
-            url = f"{search_path}/mobile/{clean_phone}"
+            try:
+                print(f"DEBUG: Buscando contacto (con +) en {url}")
+                response = requests.get(url, headers=self.headers)
+                data = response.json()
+                
+                # Si lo encuentra, devolvemos el resultado inmediatamente
+                if response.status_code == 200 and data.get("success") is True:
+                    return data, 200
+                
+                # Si no lo encuentra con +, probamos SIN el + (solo si no lo tenía originalmente)
+                if not raw_phone.startswith("+"):
+                    clean_phone_no_plus = raw_phone
+                    url_no_plus = f"{search_path}/mobile/{clean_phone_no_plus}"
+                    print(f"DEBUG: Falló con +. Probando sin + en {url_no_plus}")
+                    response_no_plus = requests.get(url_no_plus, headers=self.headers)
+                    data_no_plus = response_no_plus.json()
+                    return data_no_plus, response_no_plus.status_code
+                
+                return data, response.status_code
+            except Exception as e:
+                return {"error": str(e)}, 500
+
         elif nif and str(nif).strip():
             url = f"{search_path}/nif/{nif.strip()}"
         elif email and str(email).strip():
@@ -44,9 +66,6 @@ class ZoaContact:
             print(f"DEBUG: Buscando contacto en {url}")
             response = requests.get(url, headers=self.headers)
             data = response.json()
-            
-            # Forzamos que siempre devuelva un 200 si la estructura es correcta,
-            # aunque la lista 'data' esté vacía, para que el manager lo controle.
             return data, response.status_code
         except Exception as e:
             return {"error": str(e)}, 500
