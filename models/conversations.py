@@ -79,44 +79,33 @@ class ZoaConversation:
 
         # --- CASO BOTONES ---
         elif msg_type == "buttons_text":
-            endpoint = "/waba/messages/send/text"
+            endpoint = "/waba/messages/send/text" 
             
-            # Recogemos los botones individuales que envía n8n
-            # Usamos .get() y .strip() para evitar errores si vienen vacíos
-            b1 = str(request_json.get("bt1") or "").strip()
-            b2 = str(request_json.get("bt2") or "").strip()
-            b3 = str(request_json.get("bt3") or "").strip()
-            
-            # Creamos la lista solo con los que no estén vacíos
-            btn_list = [b for b in [b1, b2, b3] if b]
+            btn_list = [str(request_json.get(f"bt{i}") or "").strip() for i in range(1, 4)]
+            btn_list = [b for b in btn_list if b]
 
-            # Mapeamos al formato interactivo de Meta
             formatted_buttons = []
             for i, btn_text in enumerate(btn_list):
                 formatted_buttons.append({
                     "type": "reply",
                     "reply": {
                         "id": f"btn_{i+1}", 
-                        "title": btn_text[:20] # WhatsApp corta a los 20 caracteres
+                        "title": btn_text[:20] 
                     }
                 })
 
             final_payload = {
                 "phone_number_id": str(company_id),
-                "conversation_id": request_json.get("conversation_id") or request_json.get("conv_id"),
+                "conversation_id": self._get_conversation_id(request_json), # Usa tu función auxiliar
                 "message_type": "interactive",
                 "content": {
                     "type": "button",
                     "header": {"type": "text", "text": "Opciones"},
-                    # n8n envía el texto en el parámetro 'message' según tu URL
-                    "body": {"text": request_json.get("message") or request_json.get("text") or "Selecciona:"},
+                    # CORRECCIÓN AQUÍ: Priorizar 'text' que es lo que envías desde Colab
+                    "body": {"text": request_json.get("text") or request_json.get("message") or "Selecciona una opción:"},
                     "action": {"buttons": formatted_buttons}
                 }
             }
-
-            if not final_payload["conversation_id"]:
-                final_payload["to"] = request_json.get("phone")
-                del final_payload["conversation_id"]
 
         # --- CASO TEMPLATE ---
         elif msg_type == "template":
