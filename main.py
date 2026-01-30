@@ -37,7 +37,8 @@ def main(request):
         return ({"error": "Se requiere 'company_id'"}, 400, headers)
 
     # --- 3. Token ---
-    token = 'sk_test_9f8a7b6c5d4e3f2a'
+    from config import API_BASE, TOKEN
+    token = TOKEN
     
     action = request_json.get("action")
     option = request_json.get("option")

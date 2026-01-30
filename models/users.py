@@ -3,8 +3,10 @@ from urllib.parse import quote
 
 class ZoaUser:
     def __init__(self, token):
+        from config import API_BASE
         self.token = token
-        self.base_url = "https://api.zoasuite.com/api/pipelines/users"
+        self.api_base = API_BASE
+        self.base_url = f"{self.api_base}/pipelines/users"
         self.headers = {
             "Content-Type": "application/json",
             "Accept": "application/json",
