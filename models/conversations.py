@@ -1,5 +1,5 @@
 import requests
-from users import ZoaUser
+from models.users import ZoaUser
 
 class ZoaConversation:
     def __init__(self, token):

@@ -1,7 +1,7 @@
 import requests
-from contacts import ZoaContact
-from users import ZoaUser
-from tags import ZoaTags
+from models.contacts import ZoaContact
+from models.users import ZoaUser
+from models.tags import ZoaTags
 
 class ZoaCardAct:
     def __init__(self, token):
