@@ -190,15 +190,16 @@ class ZoaCardAct:
             # --- PARTE 1: CREACIÓN DE LA CARD ---
             c_type = request_json.get("card_type") or "opportunity"
             p_id, s_id = self._get_context_ids(
-                request_json.get("pipeline_name"), 
-                request_json.get("stage_name"),
+                request_json.get("pipeline_name"), #Princpial, Revisiones
+                request_json.get("stage_name"), #Nuevo
                 c_type
             )
             
             if not s_id: return {"error": f"No se pudo determinar la etapa para {c_type}"}, 404
 
-            # Resolver el ID del Manager (el responsable de la card)
+            # Resolver el ID del Manager
             resolved_manager_id = self._resolve_user_id_by_name(request_json.get("manager_name"))
+            print(f"DEBUG: Manager resuelto: {resolved_manager_id} para el nombre: {request_json.get('manager_name')}")
 
             c_res, c_status = self.contact_manager.search(request_json)
             contact_id = None
@@ -210,37 +211,32 @@ class ZoaCardAct:
 
             tag_ids = self._resolve_tag_ids(request_json.get("tags_name"))
 
+            # --- CORRECCIÓN AQUÍ: CAMBIADO manager_id_id a manager_id ---
             card_payload = {
                 "stage_id": s_id,
                 "pipeline_id": p_id,
-                "title": request_json.get("title"), # Título de la Card
+                "title": request_json.get("title"),
                 "contact_id": contact_id,
                 "card_type": c_type,
                 "amount": float(request_json.get("amount") or 0),
                 "tag_id": tag_ids,
                 "description": request_json.get("description"),
-                "user_id": resolved_manager_id
+                "manager_id": resolved_manager_id  # <--- Corregido
             }
             
             response_card = requests.post(f"{self.api_base}/pipelines/cards", headers=self.headers, json=card_payload)
             res_card_json = response_card.json()
             card_id = res_card_json.get("data", {}).get("id")
 
-            if response_card.status_code != 201 and response_card.status_code != 200:
+            if response_card.status_code not in [200, 201]:
                 return res_card_json, response_card.status_code
 
-            # Sincronización de Tags (Patch de seguridad)
-            if card_id and tag_ids:
-                requests.patch(f"{self.api_base}/pipelines/cards/{card_id}", headers=self.headers, json={"tag_id": tag_ids})
-
-            # --- PARTE 2: CREACIÓN DE ACTIVIDAD (SI VIENE EN EL PAYLOAD) ---
-            # Si el payload contiene 'type_of_activity', entendemos que hay que crear una tarea asociada
-            activity_title = request_json.get("activity_title") or f"Actividad: {request_json.get('title')}"
-            
+            # --- PARTE 2: CREACIÓN DE ACTIVIDAD ---
             if request_json.get("type_of_activity"):
                 guests_ids = self._resolve_guests_ids(request_json.get("guests_names"))
+                activity_title = request_json.get("activity_title") or f"Actividad: {request_json.get('title')}"
                 
-                # Default to current date and time if not provided
+                # Default dates
                 now = datetime.now()
                 default_date = now.strftime("%Y-%m-%d")
                 default_time = now.strftime("%H:%M")
@@ -249,73 +245,118 @@ class ZoaCardAct:
                     "title": activity_title,
                     "type_of_activity": request_json.get("type_of_activity", "llamada"),
                     "contact_id": contact_id,
-                    "card_id": card_id, # ASOCIACIÓN AQUÍ
+                    "card_id": card_id,
                     "type": request_json.get("type", "sales"),
                     "date": request_json.get("date") or default_date,
                     "start_time": request_json.get("start_time") or default_time,
                     "duration": str(request_json.get("duration") or "30"),
                     "description": request_json.get("activity_description") or request_json.get("description"),
                     "guests": guests_ids,
-                    "repeat": str(request_json.get("repeat", "")).lower() == "true",
-                    "repetition_type": request_json.get("repetition_type"),
-                    "repetitions_number": int(request_json.get("repetitions_number")) if request_json.get("repetitions_number") else None,
-                    "end_type": request_json.get("end_type", "never"),
-                    "end_date": request_json.get("end_date")
+                    "manager_id": resolved_manager_id # <--- También lo asignamos aquí
                 }
                 
-                # Limpiar nulos
                 activity_payload = {k: v for k, v in activity_payload.items() if v is not None and v != ""}
-                
                 response_act = requests.post(f"{self.api_base}/pipelines/activities", headers=self.headers, json=activity_payload)
-                res_card_json["activity_result"] = response_act.json() # Adjuntamos el resultado de la actividad al response
+                res_card_json["activity_result"] = response_act.json()
 
             return res_card_json, 200
 
         except Exception as e:
             return {"error": str(e)}, 500
-        
+    
     def update(self, request_json):
-        card_id = request_json.get("card_id")
-        target_title = request_json.get("title")
-        
-        # 1. Localizar Card
-        if not card_id:
-            c_res, c_status = self.search(request_json)
-            if c_status == 200:
-                data = c_res.get("data", [])
-                found = next((c for c in data if c.get("title") == target_title), data[0]) if isinstance(data, list) and data else data
-                card_id = found.get("id") if isinstance(found, dict) else None
-
-        if not card_id:
-            return {"error": "No se encontró la card para actualizar"}, 404
-
-        # 2. Contexto Automático (Task/Opportunity)
-        c_type = request_json.get("card_type") or "opportunity"
-        s_name = request_json.get("new_stage_name") or request_json.get("stage_name")
-        p_name = request_json.get("new_pipeline_name") or request_json.get("pipeline_name")
-        
-        p_id, s_id = None, None
-        if s_name:
-            p_id, s_id = self._get_context_ids(p_name, s_name, c_type)
-
-        # 3. Tags
-        tags_input = request_json.get("new_tags_name") or request_json.get("tags_name")
-        tag_ids = self._resolve_tag_ids(tags_input) if tags_input else None
-
-        # 4. Payload PATCH
-        patch_payload = {
-            "title": request_json.get("new_title"),
-            "pipeline_id": p_id,
-            "stage_id": s_id,
-            "tag_id": tag_ids,
-            "amount": float(request_json.get("amount")) if request_json.get("amount") else None,
-            "description": request_json.get("description")
-        }
-        patch_payload = {k: v for k, v in patch_payload.items() if v is not None}
-
         try:
-            url = f"{self.api_base}/pipelines/cards/{card_id}"
-            response = requests.patch(url, headers=self.headers, json=patch_payload)
-            return response.json(), response.status_code
+            card_id = request_json.get("card_id")
+            target_title = request_json.get("title")
+            
+            # 1. LOCALIZAR ID DE LA CARD
+            if not card_id:
+                c_res, c_status = self.search(request_json)
+                if c_status == 200:
+                    data = c_res.get("data", [])
+                    if isinstance(data, list) and data:
+                        found = next((c for c in data if str(c.get("title")).lower() == str(target_title).lower()), data[0]) if target_title else data[0]
+                        card_id = found.get("id")
+                    elif isinstance(data, dict):
+                        card_id = data.get("id")
+
+            if not card_id:
+                return {"error": "No se localizó la Card."}, 404
+
+            # 2. RESOLVER GESTOR E INVITADOS
+            resolved_manager_id = self._resolve_user_id_by_name(request_json.get("manager_name"))
+            guests_ids = self._resolve_guests_ids(request_json.get("guests_names"))
+            contact_id = request_json.get("contact_id") # Intentar pillar el ID si viene
+
+            # 3. ACTUALIZAR CARD
+            patch_card_payload = {
+                "title": request_json.get("new_title"),
+                "amount": float(request_json.get("amount")) if request_json.get("amount") else None,
+                "description": request_json.get("description"),
+                "manager_id": resolved_manager_id
+            }
+            patch_card_payload = {k: v for k, v in patch_card_payload.items() if v is not None}
+            if patch_card_payload:
+                requests.patch(f"{self.api_base}/pipelines/cards/{card_id}", headers=self.headers, json=patch_card_payload, timeout=10)
+
+            # 4. GESTIÓN DE ACTIVIDADES: BORRAR Y RECREAR (Para evitar duplicados y nombres erróneos)
+            res_final = {"card_id_processed": card_id, "success": True}
+            
+            # Buscamos actividades actuales de la card
+            res_acts = requests.get(f"{self.api_base}/pipelines/activities?card_id={card_id}", headers=self.headers, timeout=10)
+            
+            if res_acts.status_code == 200:
+                activities_data = res_acts.json().get("data", [])
+                if isinstance(activities_data, dict): activities_data = [activities_data]
+                
+                # ELIMINAR TODAS LAS ANTERIORES
+                for act in activities_data:
+                    old_id = act.get("id")
+                    if old_id:
+                        requests.delete(f"{self.api_base}/pipelines/activities/{old_id}", headers=self.headers, timeout=5)
+                        print(f"DEBUG: Eliminada actividad antigua {old_id}")
+
+            # 5. CREAR LA NUEVA ACTIVIDAD (Limpia y con los datos correctos)
+            if any(request_json.get(k) for k in ["date", "start_time", "activity_title", "type_of_activity"]):
+                # Necesitamos el contact_id. Si no lo tenemos, lo buscamos de la card
+                if not contact_id:
+                    card_detail = requests.get(f"{self.api_base}/pipelines/cards/{card_id}", headers=self.headers).json()
+                    contact_id = card_detail.get("data", {}).get("contact_id")
+
+                # Default dates
+                now = datetime.now()
+                default_date = now.strftime("%Y-%m-%d")
+                default_time = now.strftime("%H:%M")
+
+                raw_time = request_json.get("start_time")
+                clean_time = raw_time[:5] if raw_time and len(raw_time) > 5 else raw_time
+                
+                final_date = request_json.get("date") or default_date
+                final_time = clean_time or default_time
+
+                new_act_payload = {
+                    "title": request_json.get("activity_title") or "Nueva Actividad",
+                    "type_of_activity": request_json.get("type_of_activity") or "llamada",
+                    "description": request_json.get("activity_description"),
+                    "contact_id": contact_id,
+                    "card_id": card_id,
+                    "date": final_date,
+                    "start_time": final_time,
+                    "duration": str(request_json.get("duration") or "30"),
+                    "manager_id": resolved_manager_id,
+                    "guests": guests_ids
+                }
+                new_act_payload = {k: v for k, v in new_act_payload.items() if v is not None}
+                
+                r_create = requests.post(f"{self.api_base}/pipelines/activities", headers=self.headers, json=new_act_payload, timeout=10)
+                
+                if r_create.status_code in [200, 201]:
+                    res_final["activity_status"] = "Recreada correctamente"
+                    res_final["activity_result"] = r_create.json()
+                else:
+                    res_final["activity_error"] = r_create.text
+
+            return res_final, 200
+
         except Exception as e:
             return {"error": str(e)}, 500
