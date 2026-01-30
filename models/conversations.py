@@ -1,10 +1,10 @@
 import requests
-from models.users import ZoaUser
+from users import ZoaUser
 
 class ZoaConversation:
     def __init__(self, token):
         self.token = str(token).strip()
-        self.api_base = "https://api.zoasuite.com/api"
+        self.api_base = "https://dev.api.zoasuite.com/api"
         self.headers = {
             "Content-Type": "application/json",
             "Accept": "application/json",
@@ -61,9 +61,9 @@ class ZoaConversation:
         if msg_type == "text":
             endpoint = "/waba/messages/send/text"
             final_payload = {
-                "phone_number_id": str(company_id), #not null
-                "conversation_id": request_json.get("conversation_id") or request_json.get("conv_id"), #not null
-                "text": request_json.get("text"), #not null
+                "phone_number_id": str(company_id),
+                "conversation_id": request_json.get("conversation_id") or request_json.get("conv_id"),
+                "text": request_json.get("text"),
                 "image": request_json.get("image") or empty_obj,
                 "audio": request_json.get("audio") or empty_obj,
                 "video": request_json.get("video") or empty_obj,
@@ -78,25 +78,43 @@ class ZoaConversation:
 
         # --- CASO BOTONES ---
         elif msg_type == "buttons_text":
-            endpoint = "/waba/messages/send/interactive/buttons"
+            endpoint = "/waba/messages/send/text"
             
-            # Procesamos la entrada "b1, b2, b3" -> ["b1", "b2", "b3"]
-            raw_buttons = request_json.get("buttons", [])
-            if isinstance(raw_buttons, str):
-                btn_list = [b.strip() for b in raw_buttons.split(",") if b.strip()]
-            else:
-                btn_list = raw_buttons
+            # Recogemos los botones individuales que envía n8n
+            # Usamos .get() y .strip() para evitar errores si vienen vacíos
+            b1 = str(request_json.get("bt1") or "").strip()
+            b2 = str(request_json.get("bt2") or "").strip()
+            b3 = str(request_json.get("bt3") or "").strip()
+            
+            # Creamos la lista solo con los que no estén vacíos
+            btn_list = [b for b in [b1, b2, b3] if b]
+
+            # Mapeamos al formato interactivo de Meta
+            formatted_buttons = []
+            for i, btn_text in enumerate(btn_list):
+                formatted_buttons.append({
+                    "type": "reply",
+                    "reply": {
+                        "id": f"btn_{i+1}", 
+                        "title": btn_text[:20] # WhatsApp corta a los 20 caracteres
+                    }
+                })
 
             final_payload = {
-                "phone_number_id": str(company_id), #not null
-                "to": request_json.get("to") or request_json.get("phone"), #not null
-                "text": request_json.get("text"), #not null
-                "buttons": btn_list,
-                "conversation_id": request_json.get("conversation_id") or request_json.get("conv_id") #not null
+                "phone_number_id": str(company_id),
+                "conversation_id": request_json.get("conversation_id") or request_json.get("conv_id"),
+                "message_type": "interactive",
+                "content": {
+                    "type": "button",
+                    "header": {"type": "text", "text": "Opciones"},
+                    # n8n envía el texto en el parámetro 'message' según tu URL
+                    "body": {"text": request_json.get("message") or request_json.get("text") or "Selecciona:"},
+                    "action": {"buttons": formatted_buttons}
+                }
             }
-            
-            # Limpiamos si no hay conversation_id para evitar errores de validación
-            if not final_payload.get("conversation_id"):
+
+            if not final_payload["conversation_id"]:
+                final_payload["to"] = request_json.get("phone")
                 del final_payload["conversation_id"]
 
         # --- CASO TEMPLATE ---
@@ -108,21 +126,34 @@ class ZoaConversation:
             if not template_id:
                 return {"error": f"Template '{template_name}' no encontrado"}, 404
 
-            final_payload = {
-                "to": request_json.get("to") or request_json.get("phone"), #not null
-                "template_id": str(template_id), #not null
-                "data": request_json.get("data") or {
-                    "body": request_json.get("body") or [], #not null
-                    "button": request_json.get("button") or [],
-                    "header": request_json.get("header") or [],
-                    "document_name": request_json.get("document_name"),
-                    "header_type": request_json.get("header_type", "")
-                },
-                "phone_number_id": str(company_id) #not null
+            # Preparamos la data base
+            msg_data = request_json.get("data") or {
+                "body": request_json.get("body") or [],
+                "button": request_json.get("button") or [],
+                "header": request_json.get("header") or [],
+                "document_name": request_json.get("document_name"),
+                "header_type": request_json.get("header_type", "")
             }
 
-        else:
-            return {"error": f"Tipo de mensaje '{msg_type}' no soportado"}, 400
+            # LÓGICA PARA BASE64: Si n8n envía "base64", lo metemos en el header
+            b64_data = request_json.get("base64")
+            if b64_data:
+                # Aseguramos que el header_type sea IMAGE
+                msg_data["header_type"] = "IMAGE"
+                # El formato de ZOA para base64 en templates suele requerir el objeto dentro de header
+                msg_data["header"] = [{
+                    "type": "image",
+                    "image": {
+                        "link": b64_data  # ZOA acepta el string base64 aquí
+                    }
+                }]
+
+            final_payload = {
+                "to": request_json.get("to") or request_json.get("phone"),
+                "template_id": str(template_id),
+                "data": msg_data,
+                "phone_number_id": str(company_id)
+            }
 
         # --- EJECUCIÓN DE LA PETICIÓN ---
         try:
