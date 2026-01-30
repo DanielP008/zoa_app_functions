@@ -86,8 +86,15 @@ class ZoaConversation:
 
         # --- CASO BOTONES ---
         elif msg_type == "buttons_text":
+            # El endpoint suele ser el mismo para mensajes estructurados
             endpoint = "/waba/messages/send/text" 
             
+            # Asegurar que tenemos un conversation_id
+            conv_id = self._get_conversation_id(request_json)
+            if not conv_id:
+                phone_raw = str(request_json.get("phone") or "").replace("+", "").strip()
+                conv_id = f"{company_id}_{phone_raw}"
+
             btn_list = [str(request_json.get(f"bt{i}") or "").strip() for i in range(1, 4)]
             btn_list = [b for b in btn_list if b]
 
@@ -97,19 +104,18 @@ class ZoaConversation:
                     "type": "reply",
                     "reply": {
                         "id": f"btn_{i+1}", 
-                        "title": btn_text[:20] 
+                        "title": btn_text[:20] # WhatsApp limita a 20 caracteres
                     }
                 })
 
             final_payload = {
                 "phone_number_id": str(company_id),
-                "conversation_id": self._get_conversation_id(request_json), # Usa tu función auxiliar
+                "conversation_id": conv_id, 
                 "message_type": "interactive",
                 "content": {
                     "type": "button",
                     "header": {"type": "text", "text": "Opciones"},
-                    # CORRECCIÓN AQUÍ: Priorizar 'text' que es lo que envías desde Colab
-                    "body": {"text": request_json.get("text") or request_json.get("message") or "Selecciona una opción:"},
+                    "body": {"text": request_json.get("text") or "Selecciona una opción:"},
                     "action": {"buttons": formatted_buttons}
                 }
             }
