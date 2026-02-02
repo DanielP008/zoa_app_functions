@@ -14,34 +14,41 @@ class ZoaConversation:
         self.user_manager = ZoaUser(self.token)
 
     def _get_template_id_by_name(self, template_name, company_id):
-        """Busca el ID del template de forma segura y limpia."""
+        """Busca el ID del template de forma segura en la respuesta de ZOA."""
         if not company_id:
             return None
         
-        # Aseguramos que la URL no tenga dobles slashes y tenga el query param
+        # Construcción limpia de la URL
         base = self.api_base.rstrip('/')
         url = f"{base}/waba/templates"
         params = {"phone_number_id": str(company_id)}
         
         try:
-            print(f"DEBUG: Consultando templates en {url} para {company_id}")
-            response = requests.get(url, headers=self.headers, params=params, timeout=10)
+            print(f"DEBUG: Buscando template '{template_name}' en {url}")
+            response = requests.get(url, headers=self.headers, params=params, timeout=12)
             
-            if response.status_code == 200:
-                res_json = response.json()
-                # Extraemos la lista de la llave 'data'
-                templates = res_json.get("data", [])
-                
-                for t in templates:
-                    # Comparamos quitando espacios por si acaso
-                    if str(t.get("name")).strip() == str(template_name).strip():
-                        print(f"DEBUG: Template encontrado! ID: {t.get('id')}")
-                        return t.get("id")
+            if response.status_code != 200:
+                print(f"DEBUG: ZOA API respondió error {response.status_code}: {response.text}")
+                return None
+
+            res_json = response.json()
+            # La API devuelve los templates dentro de 'data'
+            templates = res_json.get("data", [])
             
-            print(f"DEBUG: No se encontró el template '{template_name}' en la lista de ZOA.")
+            if not templates:
+                print("DEBUG: La API de ZOA devolvió una lista de templates vacía.")
+                return None
+
+            for t in templates:
+                # Comparamos nombres ignorando mayúsculas/minúsculas y espacios
+                if str(t.get("name")).strip().lower() == str(template_name).strip().lower():
+                    t_id = t.get("id")
+                    print(f"DEBUG: ¡Encontrado! {template_name} -> ID: {t_id}")
+                    return t_id
+            
             return None
         except Exception as e:
-            print(f"DEBUG: Error en búsqueda: {str(e)}")
+            print(f"DEBUG: Excepción en _get_template_id_by_name: {str(e)}")
             return None
     def _get_conversation_id(self, request_json):
         """Genera el ID exacto: {company_id}_{phone_sin_mas}"""
