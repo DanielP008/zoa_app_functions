@@ -14,41 +14,60 @@ class ZoaConversation:
         self.user_manager = ZoaUser(self.token)
 
     def _get_template_id_by_name(self, template_name, company_id):
-        """Busca el ID del template de forma segura en la respuesta de ZOA."""
+        """Busca el ID del template recorriendo todas las páginas de la API."""
         if not company_id:
             return None
         
-        # Construcción limpia de la URL
         base = self.api_base.rstrip('/')
         url = f"{base}/waba/templates"
-        params = {"phone_number_id": str(company_id)}
+        
+        # Parámetros iniciales. Aumentamos el limit a 100 para reducir saltos.
+        params = {
+            "phone_number_id": str(company_id),
+            "limit": 100 
+        }
         
         try:
-            print(f"DEBUG: Buscando template '{template_name}' en {url}")
-            response = requests.get(url, headers=self.headers, params=params, timeout=12)
-            
-            if response.status_code != 200:
-                print(f"DEBUG: ZOA API respondió error {response.status_code}: {response.text}")
-                return None
+            while url:
+                print(f"DEBUG: Consultando página de templates en {url}")
+                response = requests.get(url, headers=self.headers, params=params, timeout=15)
+                
+                if response.status_code != 200:
+                    print(f"DEBUG: Error API ZOA ({response.status_code}): {response.text}")
+                    break
 
-            res_json = response.json()
-            # La API devuelve los templates dentro de 'data'
-            templates = res_json.get("data", [])
-            
-            if not templates:
-                print("DEBUG: La API de ZOA devolvió una lista de templates vacía.")
-                return None
+                res_json = response.json()
+                templates = res_json.get("data", [])
+                
+                # Buscamos en la página actual
+                for t in templates:
+                    if str(t.get("name")).strip().lower() == str(template_name).strip().lower():
+                        t_id = t.get("id")
+                        print(f"DEBUG: ¡Template encontrado en esta página! ID: {t_id}")
+                        return t_id
+                
+                # --- LÓGICA DE PAGINACIÓN ---
+                # Revisamos si hay una siguiente página según la estructura de Meta/ZOA
+                paging = res_json.get("paging", {})
+                next_page_url = paging.get("next") # A veces viene la URL completa
+                cursors = paging.get("cursors", {})
+                after_token = cursors.get("after")
 
-            for t in templates:
-                # Comparamos nombres ignorando mayúsculas/minúsculas y espacios
-                if str(t.get("name")).strip().lower() == str(template_name).strip().lower():
-                    t_id = t.get("id")
-                    print(f"DEBUG: ¡Encontrado! {template_name} -> ID: {t_id}")
-                    return t_id
-            
+                if next_page_url:
+                    url = next_page_url
+                    params = {} # Los params ya suelen ir incluidos en la URL 'next'
+                elif after_token:
+                    # Si solo nos dan el token 'after', lo añadimos a los params
+                    params["after"] = after_token
+                else:
+                    # No hay más páginas
+                    url = None
+
+            print(f"DEBUG: Se recorrieron todas las páginas y no se encontró '{template_name}'")
             return None
+
         except Exception as e:
-            print(f"DEBUG: Excepción en _get_template_id_by_name: {str(e)}")
+            print(f"DEBUG: Error grave en búsqueda paginada: {str(e)}")
             return None
     def _get_conversation_id(self, request_json):
         """Genera el ID exacto: {company_id}_{phone_sin_mas}"""
