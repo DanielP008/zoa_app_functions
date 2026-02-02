@@ -125,22 +125,19 @@ class ZoaConversation:
 
         # --- CASO BOTONES ---
         elif msg_type == "buttons_text":
-            # 1. Definimos el endpoint único
-            endpoint = "/waba/messages/send/text" 
+            endpoint = "/waba/messages/send/text"
             
             conv_id = self._get_conversation_id(request_json)
             if not conv_id:
                 phone_raw = str(request_json.get("phone") or "").replace("+", "").strip()
                 conv_id = f"{company_id}_{phone_raw}"
 
-            # 2. Extraemos los botones
-            btn1 = str(request_json.get("bt1") or "").strip()
-            btn2 = str(request_json.get("bt2") or "").strip()
-            btn3 = str(request_json.get("bt3") or "").strip()
+            # 1. Filtramos los botones que tienen texto
+            btn_texts = [str(request_json.get(f"bt{i}") or "").strip() for i in range(1, 4)]
+            btn_texts = [t for t in btn_texts if t]
 
-            # 3. Lógica de Fallback: Si no hay ni un solo botón, enviamos tipo "text"
-            if not btn1 and not btn2 and not btn3:
-                print("DEBUG: No hay botones. Enviando como tipo 'text'")
+            # 2. Si no hay botones, fallback a texto simple
+            if not btn_texts:
                 final_payload = {
                     "phone_number_id": str(company_id),
                     "conversation_id": conv_id,
@@ -148,16 +145,26 @@ class ZoaConversation:
                     "text": request_json.get("text")
                 }
             else:
-                # 4. Enviamos como "buttons_text" según pide tu API
-                print("DEBUG: Enviando como tipo 'buttons_text'")
+                # 3. Construcción del objeto INTERACTIVE según estándar de Meta
+                formatted_buttons = []
+                for i, text in enumerate(btn_texts):
+                    formatted_buttons.append({
+                        "type": "reply",
+                        "reply": {
+                            "id": f"btn_{i+1}",
+                            "title": text[:20]  # Límite de WhatsApp
+                        }
+                    })
+
                 final_payload = {
                     "phone_number_id": str(company_id),
                     "conversation_id": conv_id,
-                    "type": "buttons_text",
-                    "text": request_json.get("text"),
-                    "bt1": btn1,
-                    "bt2": btn2,
-                    "bt3": btn3
+                    "type": "interactive", # <--- CAMBIADO: 'buttons_text' NO, 'interactive' SÍ
+                    "content": {
+                        "type": "button",
+                        "body": {"text": request_json.get("text") or "Selecciona una opción:"},
+                        "action": {"buttons": formatted_buttons}
+                    }
                 }
 
         # --- CASO TEMPLATE ---
