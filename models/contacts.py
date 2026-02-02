@@ -14,6 +14,39 @@ class ZoaContact:
         self.user_manager = ZoaUser(self.token)
         
 
+    def _enrich_with_manager_name(self, data):
+        """
+        Método auxiliar para añadir el manager_name a la respuesta del contacto.
+        """
+        if not isinstance(data, dict):
+            return data
+            
+        # Extraemos el objeto de contacto o lista de contactos
+        contact_data = data.get("data")
+        
+        # Si es una lista, iteramos (aunque search suele buscar uno específico)
+        if isinstance(contact_data, list):
+            for contact in contact_data:
+                self._add_manager_name_to_contact(contact)
+        elif isinstance(contact_data, dict):
+            self._add_manager_name_to_contact(contact_data)
+            
+        return data
+
+    def _add_manager_name_to_contact(self, contact):
+        """Añade manager_name a un objeto de contacto individual si tiene manager_id"""
+        manager_id = contact.get("manager_id")
+        if manager_id:
+            # Buscamos el usuario por ID
+            u_res, u_status = self.user_manager.search({"id": manager_id})
+            if u_status == 200 and u_res.get("success"):
+                user_data = u_res.get("data")
+                # user_data debería ser el objeto de usuario ya filtrado por id en models/users.py
+                if isinstance(user_data, dict):
+                    contact["manager_name"] = user_data.get("name")
+                elif isinstance(user_data, list) and len(user_data) > 0:
+                     contact["manager_name"] = user_data[0].get("name")
+
     def search(self, request_json):
         # Intentamos obtener el teléfono de ambas llaves posibles
         phone = request_json.get("phone") or request_json.get("mobile")
@@ -37,6 +70,7 @@ class ZoaContact:
                 
                 # Si lo encuentra, devolvemos el resultado inmediatamente
                 if response.status_code == 200 and data.get("success") is True:
+                    self._enrich_with_manager_name(data)
                     return data, 200
                 
                 # Si no lo encuentra con +, probamos SIN el + (solo si no lo tenía originalmente)
@@ -46,6 +80,10 @@ class ZoaContact:
                     print(f"DEBUG: Falló con +. Probando sin + en {url_no_plus}")
                     response_no_plus = requests.get(url_no_plus, headers=self.headers)
                     data_no_plus = response_no_plus.json()
+                    
+                    if response_no_plus.status_code == 200 and data_no_plus.get("success") is True:
+                         self._enrich_with_manager_name(data_no_plus)
+
                     return data_no_plus, response_no_plus.status_code
                 
                 return data, response.status_code
@@ -66,6 +104,8 @@ class ZoaContact:
             print(f"DEBUG: Buscando contacto en {url}")
             response = requests.get(url, headers=self.headers)
             data = response.json()
+            if response.status_code == 200 and data.get("success") is True:
+                self._enrich_with_manager_name(data)
             return data, response.status_code
         except Exception as e:
             return {"error": str(e)}, 500
