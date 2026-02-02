@@ -125,49 +125,39 @@ class ZoaConversation:
 
         # --- CASO BOTONES ---
         elif msg_type == "buttons_text":
-            # 1. Preparación de IDs y limpieza de botones
+            # 1. Definimos el endpoint único
+            endpoint = "/waba/messages/send/text" 
+            
             conv_id = self._get_conversation_id(request_json)
             if not conv_id:
                 phone_raw = str(request_json.get("phone") or "").replace("+", "").strip()
                 conv_id = f"{company_id}_{phone_raw}"
 
-            # Extraemos y filtramos botones que no estén vacíos
-            btn_list = [str(request_json.get(f"bt{i}") or "").strip() for i in range(1, 4)]
-            btn_list = [b for b in btn_list if b]
+            # 2. Extraemos los botones
+            btn1 = str(request_json.get("bt1") or "").strip()
+            btn2 = str(request_json.get("bt2") or "").strip()
+            btn3 = str(request_json.get("bt3") or "").strip()
 
-            # 2. LÓGICA DE PROTECCIÓN: Si no hay botones, enviamos como TEXTO SIMPLE
-            if not btn_list:
-                print("DEBUG: No se detectaron botones. Reviertiendo a mensaje de texto simple.")
-                endpoint = "/waba/messages/send/text"
+            # 3. Lógica de Fallback: Si no hay ni un solo botón, enviamos tipo "text"
+            if not btn1 and not btn2 and not btn3:
+                print("DEBUG: No hay botones. Enviando como tipo 'text'")
                 final_payload = {
                     "phone_number_id": str(company_id),
                     "conversation_id": conv_id,
-                    "text": request_json.get("text") or "Hola, ¿en qué puedo ayudarte?"
+                    "type": "text",
+                    "text": request_json.get("text")
                 }
             else:
-                # 3. Si hay botones, construimos el payload INTERACTIVO
-                endpoint = "/waba/messages/send/interactive" # Usar el endpoint específico de interactivos si existe
-                
-                formatted_buttons = []
-                for i, btn_text in enumerate(btn_list):
-                    formatted_buttons.append({
-                        "type": "reply",
-                        "reply": {
-                            "id": f"btn_{i+1}", 
-                            "title": btn_text[:20] # WhatsApp trunca a 20 caracteres
-                        }
-                    })
-
+                # 4. Enviamos como "buttons_text" según pide tu API
+                print("DEBUG: Enviando como tipo 'buttons_text'")
                 final_payload = {
                     "phone_number_id": str(company_id),
-                    "conversation_id": conv_id, 
-                    "message_type": "interactive",
-                    "content": {
-                        "type": "button",
-                        "header": {"type": "text", "text": "Opciones"},
-                        "body": {"text": request_json.get("text") or "Selecciona una opción:"},
-                        "action": {"buttons": formatted_buttons}
-                    }
+                    "conversation_id": conv_id,
+                    "type": "buttons_text",
+                    "text": request_json.get("text"),
+                    "bt1": btn1,
+                    "bt2": btn2,
+                    "bt3": btn3
                 }
 
         # --- CASO TEMPLATE ---
