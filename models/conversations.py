@@ -133,56 +133,62 @@ class ZoaConversation:
         # --- CASO TEMPLATE ---
         elif msg_type == "template":
             endpoint = "/waba/messages/send/template"
-            template_name = request_json.get("template_name")
-            template_id = self._get_template_id_by_name(template_name, company_id)
+            
+            # Prioridad 1: Usar ID directo si viene en el JSON
+            template_id = request_json.get("template_id")
+            
+            # Prioridad 2: Si no hay ID, buscar por nombre
+            if not template_id:
+                template_name = request_json.get("template_name")
+                template_id = self._get_template_id_by_name(template_name, company_id)
             
             if not template_id:
-                return {"error": f"Template '{template_name}' no encontrado"}, 404
+                return {"error": f"No se pudo determinar el ID del template (nombre: {request_json.get('template_name')})"}, 404
 
-            # Preparamos la data base
-            msg_data = request_json.get("data") or {
-                "body": request_json.get("body") or [],
+            # Construir data simplificada para evitar errores 502/422 en producción
+            msg_data = {
+                "body": request_json.get("body") or request_json.get("data", {}).get("body") or [],
                 "button": request_json.get("button") or [],
                 "header": request_json.get("header") or [],
                 "document_name": request_json.get("document_name"),
                 "header_type": request_json.get("header_type", "")
             }
 
-            # LÓGICA PARA BASE64: Si n8n envía "base64", lo metemos en el header
+            # Lógica Base64
             b64_data = request_json.get("base64")
             if b64_data:
-                # Aseguramos que el header_type sea IMAGE
                 msg_data["header_type"] = "IMAGE"
-                # El formato de ZOA para base64 en templates suele requerir el objeto dentro de header
                 msg_data["header"] = [{
                     "type": "image",
-                    "image": {
-                        "link": b64_data  # ZOA acepta el string base64 aquí
-                    }
+                    "image": {"link": b64_data}
                 }]
 
             final_payload = {
-                "to": request_json.get("to") or request_json.get("phone"),
+                "to": str(request_json.get("to") or request_json.get("phone")).strip(),
                 "template_id": str(template_id),
                 "data": msg_data,
                 "phone_number_id": str(company_id)
             }
 
-        # --- EJECUCIÓN DE LA PETICIÓN ---
+        else:
+            return {"error": f"Tipo de mensaje '{msg_type}' no soportado"}, 400
+
+        # --- EJECUCIÓN ---
         try:
-            url_post = f"{self.api_base}{endpoint}"
-            response = requests.post(url_post, headers=self.headers, json=final_payload)
+            # Limpiamos posibles dobles slashes en la URL
+            base_url = self.api_base.rstrip('/')
+            url_post = f"{base_url}{endpoint}"
+            
+            print(f"DEBUG: Enviando POST a {url_post}")
+            response = requests.post(url_post, headers=self.headers, json=final_payload, timeout=15)
             
             if response.status_code == 422:
-                print(f"ERROR 422 DETALLE ZOA: {response.text}")
+                print(f"ERROR 422 ZOA: {response.text}")
 
-            try:
-                return response.json(), response.status_code
-            except Exception:
-                return {"status": "processed", "code": response.status_code}, response.status_code
+            return response.json() if response.text else {"status": "ok"}, response.status_code
 
         except Exception as e:
-            return {"error": f"Error de red: {str(e)}"}, 500
+            return {"error": f"Error de red en Flow: {str(e)}"}, 500
 
     def assign(self, request_json):
         """TU FUNCIÓN ORIGINAL (Sin cambios)"""
