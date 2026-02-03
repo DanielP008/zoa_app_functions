@@ -4,8 +4,11 @@ services:
     container_name: flow-zoa-app
     ports:
       - "8080:8080"
+    volumes:
+      - ./firebase.json:/app/firebase.json:ro
     environment:
       - PORT=8080
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/firebase.json
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080"]
