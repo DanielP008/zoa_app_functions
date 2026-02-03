@@ -77,19 +77,23 @@ class ZoaNote:
                 cards = card_res.get("data", [])
                 if cards: card_id = cards[0].get("id")
 
-        # 3. Resolver ID del Manager (Usuario) por nombre
-        user_id = None
-        manager_name = request_json.get("manager_name")
-        if manager_name:
-            print(f"DEBUG: Buscando ID para el manager: {manager_name}")
-            u_res, u_status = self.user_manager.search({"name": manager_name})
-            if u_status == 200:
-                # La API suele devolver una lista o un objeto bajo 'data'
-                u_data = u_res.get("data", [])
-                if isinstance(u_data, list) and len(u_data) > 0:
-                    user_id = u_data[0].get("id")
-                elif isinstance(u_data, dict):
-                    user_id = u_data.get("id")
+        # 3. Resolver ID del Manager (Usuario)
+        # Prioridad:
+        #   1) Si ya viene user_id en el payload, usamos ese directamente.
+        #   2) Si viene manager_name o user_name, lo resolvemos por nombre.
+        user_id = request_json.get("user_id")
+        if not user_id:
+            manager_name = request_json.get("manager_name") or request_json.get("user_name")
+            if manager_name:
+                print(f"DEBUG: Buscando ID para el manager/user: {manager_name}")
+                u_res, u_status = self.user_manager.search({"name": manager_name})
+                if u_status == 200:
+                    # La API suele devolver una lista o un objeto bajo 'data'
+                    u_data = u_res.get("data", [])
+                    if isinstance(u_data, list) and len(u_data) > 0:
+                        user_id = u_data[0].get("id")
+                    elif isinstance(u_data, dict):
+                        user_id = u_data.get("id")
 
         # 4. Construir Payload para ZOA
         url = f"{self.api_base}/pipelines/notes"

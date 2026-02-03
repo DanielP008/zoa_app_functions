@@ -281,7 +281,8 @@ class ZoaCardAct:
                     "duration": str(request_json.get("duration") or "30"),
                     "description": request_json.get("activity_description") or request_json.get("description"),
                     "guests": guests_ids,
-                    "manager_id": resolved_manager_id # <--- También lo asignamos aquí
+                    # En la API de ZOA el gestor de la actividad se envía como user_id
+                    "user_id": resolved_manager_id
                 }
                 
                 activity_payload = {k: v for k, v in activity_payload.items() if v is not None and v != ""}
@@ -379,7 +380,8 @@ class ZoaCardAct:
                     "date": final_date,
                     "start_time": final_time,
                     "duration": str(request_json.get("duration") or "30"),
-                    "manager_id": resolved_manager_id,
+                    # En actualización también usamos user_id como gestor principal
+                    "user_id": resolved_manager_id,
                     "guests": guests_ids
                 }
                 new_act_payload = {k: v for k, v in new_act_payload.items() if v is not None}

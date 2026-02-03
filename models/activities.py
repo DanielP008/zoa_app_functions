@@ -99,7 +99,19 @@ class ZoaActivity:
                     uid = u_data[0].get("id") if isinstance(u_data, list) and u_data else u_data.get("id") if isinstance(u_data, dict) else None
                     if uid: guests_ids.append(uid)
 
-        # 4. Construcción del Payload Final
+        # 4. Resolver gestor principal (user_id) a partir del nombre
+        user_id = None
+        manager_name = request_json.get("manager_name") or request_json.get("user_name")
+        if manager_name:
+            u_res, u_status = self.user_manager.search({"name": manager_name})
+            if u_status == 200 and isinstance(u_res, dict):
+                u_data = u_res.get("data", [])
+                if isinstance(u_data, list) and len(u_data) > 0:
+                    user_id = u_data[0].get("id")
+                elif isinstance(u_data, dict):
+                    user_id = u_data.get("id")
+
+        # 5. Construcción del Payload Final
         final_payload = {
             "title": request_json.get("title"),
             "type_of_activity": request_json.get("type_of_activity", "llamada"),
@@ -122,7 +134,9 @@ class ZoaActivity:
             "days": request_json.get("days", []),
             "end_type": request_json.get("end_type", "never"),
             "end_date": request_json.get("end_date"),
-            "end_after_occurrences": request_json.get("end_after_occurrences")
+            "end_after_occurrences": request_json.get("end_after_occurrences"),
+            # En la API de ZOA el gestor de la actividad se espera en user_id
+            "user_id": user_id
         }
 
         # Limpiar nulos para no enviar basura a la API
