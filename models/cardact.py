@@ -31,17 +31,24 @@ class ZoaCardAct:
                 return u_data.get("id")
         return None
 
-    def _resolve_tag_ids(self, tags_name):
-        """Convierte nombres de tags en una lista de IDs (UUIDs)."""
-        #Entran nombres de etiquetas, limpia el texto, quita espacios y busca en la base de datos de etiquetas de ZOA y la salida es una lista de IDs.
+    def _resolve_tag_ids(self, tags_name, create_missing=False):
+        """
+        Convierte nombres de tags en una lista de IDs (UUIDs).
+
+        Si create_missing=True, las etiquetas que no existan se crean en ZOA
+        (usando el modelo ZoaTags) y también se devuelven sus IDs.
+        """
         if not tags_name:
             return []
         
+        # Mantener tanto el nombre original como el normalizado para búsqueda
         names_to_find = []
         if isinstance(tags_name, str):
-            names_to_find = [t.strip().lower() for t in tags_name.split(",") if t.strip()]
+            raw_names = [t for t in tags_name.split(",") if t.strip()]
+            names_to_find = [(n.strip(), n.strip().lower()) for n in raw_names]
         elif isinstance(tags_name, list):
-            names_to_find = [str(t).strip().lower() for t in tags_name]
+            raw_names = [str(t) for t in tags_name if str(t).strip()]
+            names_to_find = [(n.strip(), n.strip().lower()) for n in raw_names]
 
         if not names_to_find:
             return []
@@ -53,10 +60,30 @@ class ZoaCardAct:
         all_tags = tags_res.get("data", [])
         resolved_ids = []
 
-        for name in names_to_find:
-            tag_obj = next((t for t in all_tags if t.get("name", "").lower().strip() == name), None)
+        for original_name, normalized_name in names_to_find:
+            # Buscar etiqueta existente por nombre (case-insensitive)
+            tag_obj = next(
+                (
+                    t
+                    for t in all_tags
+                    if str(t.get("name", "")).lower().strip() == normalized_name
+                ),
+                None,
+            )
+
             if tag_obj:
                 resolved_ids.append(tag_obj.get("id"))
+            elif create_missing:
+                # Crear la etiqueta si no existe
+                try:
+                    create_payload = {"name": original_name}
+                    created_tag, c_status = self.tag_manager.create(create_payload)
+                    if c_status in (200, 201):
+                        # La API puede devolver el objeto en "data" o plano
+                        data_ct = created_tag.get("data", created_tag)
+                        resolved_ids.append(data_ct.get("id"))
+                except Exception as e:
+                    print(f"ERROR creando tag '{original_name}': {e}")
         
         return resolved_ids
 
@@ -210,7 +237,8 @@ class ZoaCardAct:
 
             if not contact_id: return {"error": "Contacto no identificado"}, 404
 
-            tag_ids = self._resolve_tag_ids(request_json.get("tags_name"))
+            # Resolver etiquetas: si no existen, se crean automáticamente
+            tag_ids = self._resolve_tag_ids(request_json.get("tags_name"), create_missing=True)
 
             # --- CORRECCIÓN AQUÍ: CAMBIADO manager_id_id a manager_id ---
             card_payload = {
@@ -290,11 +318,18 @@ class ZoaCardAct:
             contact_id = request_json.get("contact_id") # Intentar pillar el ID si viene
 
             # 3. ACTUALIZAR CARD
+            # 3. ACTUALIZAR CARD
+            # Si se envían nuevos nombres de etiquetas, resolvemos / creamos tags
+            tag_ids = None
+            if request_json.get("tags_name"):
+                tag_ids = self._resolve_tag_ids(request_json.get("tags_name"), create_missing=True)
+
             patch_card_payload = {
                 "title": request_json.get("new_title"),
                 "amount": float(request_json.get("amount")) if request_json.get("amount") else None,
                 "description": request_json.get("description"),
-                "manager_id": resolved_manager_id
+                "manager_id": resolved_manager_id,
+                "tag_id": tag_ids if tag_ids else None,
             }
             patch_card_payload = {k: v for k, v in patch_card_payload.items() if v is not None}
             if patch_card_payload:
