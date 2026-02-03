@@ -42,7 +42,7 @@ def main(request):
 
     # --- 3. Gestión del Token (Producción) ---
 
-    if company_id == "VIMA":
+    if company_id == "572778529248319":
         from config import TOKEN_VIMA, API_BASE_PROD
         token = TOKEN_VIMA
         api_base = API_BASE_PROD
