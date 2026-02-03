@@ -18,19 +18,19 @@ class ZoaUser:
         name = request_json.get("manager_name") or request_json.get("name")
         
         try:
-            # Si tenemos nombre, usamos el endpoint de búsqueda por nombre
+            # If we have a name, use the name search endpoint
             if name and not user_id:
                 url = f"{self.base_url}/name/{quote(name.strip())}"
                 response = requests.get(url, headers=self.headers)
                 return response.json(), response.status_code
 
             # Si tenemos ID (o nada), traemos la lista completa para filtrar
-            # Ya que no existe GET /users/{id} según tu documentación
+            # GET /users/{id} does not exist per documentation
             response = requests.get(self.base_url, headers=self.headers)
             if response.status_code == 200:
                 users_list = response.json().get("data", [])
                 if user_id:
-                    # Buscamos el objeto que coincida con el ID
+                    # Find the object matching the ID
                     user_found = next((u for u in users_list if str(u.get("id")) == str(user_id)), None)
                     if user_found:
                         return {"success": True, "data": user_found}, 200

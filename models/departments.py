@@ -19,7 +19,7 @@ class ZoaDepartment:
             return {"error": "Falta el parámetro 'phone' o 'mobile'"}, 400
 
         try:
-            # 1. Buscar contacto
+            # 1. Search contact
             c_res, c_status = self.contact_manager.search({"mobile": mobile})
             if c_status != 200:
                 return c_res, c_status
@@ -34,7 +34,7 @@ class ZoaDepartment:
             if not m_id_ref or m_id_ref == "none":
                 return {"error": "Contacto sin gestor asignado en ZOA"}, 404
 
-            # 2. Obtener equipo del departamento
+            # 2. Get department team
             url_dept = f"{self.api_base}/pipelines/users/{m_id_ref}/department-users"
             response = requests.get(url_dept, headers=self.headers, timeout=10)
             
@@ -57,7 +57,7 @@ class ZoaDepartment:
                 u_id = str(user.get("id") or "").strip().lower()
                 u_full_name = f"{user.get('first_name', '')} {user.get('last_name', '')}".strip()
                 
-                # LOG DE COMPARACIÓN
+                # Comparison log
                 print(f"DEBUG DEPARTMENTS: Comparando '{u_id}' == '{m_id_ref}' | Miembro: {u_full_name} | Ext: {ext}")
                 
                 if ext:
@@ -72,13 +72,13 @@ class ZoaDepartment:
                     team_details.append(member_info)
                     extensions_only.append(str(ext))
 
-            # 4. TRATAMIENTO DE SEGURIDAD (Si el match falló)
+            # 4. SAFETY HANDLING (if match failed)
             if primary_manager_extension is None and team_details:
                 print("DEBUG DEPARTMENTS: No hubo match de ID. Aplicando failsafe (primer usuario = principal)")
                 primary_manager_extension = team_details[0]["extension"]
                 team_details[0]["is_primary"] = True
 
-            # 5. Ordenar y generar cadena
+            # 5. Sort and build string
             team_details.sort(key=lambda x: x.get('is_primary', False), reverse=True)
             voip_dial_string = "&".join([f"Local/{ext}@users" for ext in extensions_only])
 

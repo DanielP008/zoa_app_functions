@@ -18,8 +18,8 @@ class ZoaCard:
         self.tag_manager = ZoaTags(self.token)
 
     def _resolve_tag_ids(self, tags_name):
-        """Convierte nombres de tags en una lista de IDs (UUIDs)."""
-        #Entran nombres de etiquetas, limpia el texto, quita espacios y busca en la base de datos de etiquetas de ZOA y la salida es una lista de IDs.
+        """Converts tag names into a list of IDs (UUIDs)."""
+        # Input: tag names; output: list of IDs from ZOA tags DB.
         if not tags_name:
             return []
         
@@ -48,9 +48,9 @@ class ZoaCard:
 
     def _get_context_ids(self, p_name, s_name, card_type):
         """
-        Versión ultra-diagnostic para identificar por qué se queda colgado.
+        Diagnostic helper to identify why the request might hang.
         """
-        # Cambiamos el orden: primero management porque es lo que vimos en tus imágenes
+        # Use management first for task type
         c_type_lower = str(card_type).lower()
         p_type = "management" if c_type_lower == "task" else "sales"
         
@@ -58,7 +58,7 @@ class ZoaCard:
         
         try:
             url = f"{self.api_base}/pipelines/pipelines?type={p_type}"
-            # Bajamos el timeout para que no se quede colgado el contenedor
+            # Lower timeout so the container doesn't hang
             response = requests.get(url, headers=self.headers, timeout=5)
             
             print(f"DEBUG: Respuesta recibida. Status Code: {response.status_code}")
@@ -72,7 +72,7 @@ class ZoaCard:
             print(f"DEBUG: Cantidad de pipelines encontrados: {len(data)}")
 
             if not data:
-                # Si management falla, probamos con 'task' como último recurso
+                # If management fails, try 'task' as fallback
                 print("DEBUG: Lista vacía. Reintentando con tipo 'task'...")
                 url_alt = f"{self.api_base}/pipelines/pipelines?type=task"
                 response = requests.get(url_alt, headers=self.headers, timeout=5)
@@ -96,7 +96,7 @@ class ZoaCard:
             stage_obj = None
             search_term = str(s_name).lower().strip() if s_name else ""
             
-            # Buscamos de forma flexible
+            # Search flexibly
             for s in stages:
                 title_s = str(s.get('title') or "").lower().strip()
                 name_s = str(s.get('name') or "").lower().strip()
@@ -160,7 +160,7 @@ class ZoaCard:
         try:
             c_type = request_json.get("card_type") or "opportunity"
             
-            # 1. Obtener contexto automático (Management vs Sales)
+            # 1. Get automatic context (Management vs Sales)
             p_id, s_id = self._get_context_ids(
                 request_json.get("pipeline_name"), 
                 request_json.get("stage_name"),
@@ -170,7 +170,7 @@ class ZoaCard:
             if not s_id:
                 return {"error": f"No se pudo determinar la etapa para {c_type}"}, 404
 
-            # 2. Búsqueda de Contacto
+            # 2. Contact search
             c_res, c_status = self.contact_manager.search(request_json)
             contact_id = None
             if c_status == 200 and c_res.get("data"):
@@ -198,9 +198,9 @@ class ZoaCard:
             res_json = response.json()
             card_id = res_json.get("data", {}).get("id")
 
-            # 5. Sincronización PATCH (Doble paso para asegurar Tags)
-            # Si envías los tag_id en el primer paquete (POST), la API podría ignorarlos porque aún está procesando la creación de la tarjeta "madre".
-            # Al hacer el PATCH, nos aseguramos de que la tarjeta ya existe y le "pegamos" las etiquetas con total seguridad.
+            # 5. PATCH sync (two-step to ensure tags)
+            # If you send tag_id in the first POST, the API may ignore them while still creating the card.
+            # PATCH ensures the card exists and we attach tags reliably.
             if card_id and tag_ids:
                 requests.patch(f"{self.api_base}/pipelines/cards/{card_id}", headers=self.headers, json={"tag_id": tag_ids})
 
@@ -224,7 +224,7 @@ class ZoaCard:
         if not card_id:
             return {"error": "No se encontró la card para actualizar"}, 404
 
-        # 2. Contexto Automático (Task/Opportunity)
+        # 2. Automatic context (Task/Opportunity)
         c_type = request_json.get("card_type") or "opportunity"
         s_name = request_json.get("new_stage_name") or request_json.get("stage_name")
         p_name = request_json.get("new_pipeline_name") or request_json.get("pipeline_name")

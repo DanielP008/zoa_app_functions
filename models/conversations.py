@@ -14,14 +14,14 @@ class ZoaConversation:
         self.user_manager = ZoaUser(self.token)
 
     def _get_template_id_by_name(self, template_name, company_id):
-        """Busca el ID del template recorriendo todas las páginas de la API."""
+        """Finds the template ID by iterating through all API pages."""
         if not company_id:
             return None
         
         base = self.api_base.rstrip('/')
         url = f"{base}/waba/templates"
         
-        # Parámetros iniciales. Aumentamos el limit a 100 para reducir saltos.
+        # Initial params; limit 100 to reduce pagination hops.
         params = {
             "phone_number_id": str(company_id),
             "limit": 100 
@@ -39,7 +39,7 @@ class ZoaConversation:
                 res_json = response.json()
                 templates = res_json.get("data", [])
                 
-                # Buscamos en la página actual
+                # Search current page
                 for t in templates:
                     if str(t.get("name")).strip().lower() == str(template_name).strip().lower():
                         t_id = t.get("id")
@@ -49,18 +49,18 @@ class ZoaConversation:
                 # --- LÓGICA DE PAGINACIÓN ---
                 # Revisamos si hay una siguiente página según la estructura de Meta/ZOA
                 paging = res_json.get("paging", {})
-                next_page_url = paging.get("next") # A veces viene la URL completa
+                next_page_url = paging.get("next")  # Sometimes full URL
                 cursors = paging.get("cursors", {})
                 after_token = cursors.get("after")
 
                 if next_page_url:
                     url = next_page_url
-                    params = {} # Los params ya suelen ir incluidos en la URL 'next'
+                    params = {}  # Params are usually already in the 'next' URL
                 elif after_token:
-                    # Si solo nos dan el token 'after', lo añadimos a los params
+                    # If only 'after' token is given, add to params
                     params["after"] = after_token
                 else:
-                    # No hay más páginas
+                    # No more pages
                     url = None
 
             print(f"DEBUG: Se recorrieron todas las páginas y no se encontró '{template_name}'")
@@ -76,7 +76,7 @@ class ZoaConversation:
             return conv_id
         
         company_id = str(request_json.get("company_id") or "").strip()
-        # Limpiamos el teléfono de '+' y espacios
+        # Strip phone of '+' and spaces
         phone = str(request_json.get("phone") or request_json.get("customer_phone") or "").strip().replace("+", "")
         
         if company_id and phone:
@@ -84,7 +84,7 @@ class ZoaConversation:
         return None
 
     def send(self, request_json):
-        """Orquesta el envío de mensajes transformando el request al formato final de ZOA."""
+        """Orchestrates message sending, transforming the request to ZOA's final format."""
         company_id = (
             request_json.get("company_id") or 
             request_json.get("phone_number_id") or 
@@ -101,7 +101,7 @@ class ZoaConversation:
         if msg_type == "text":
             endpoint = "/waba/messages/send/text"
             
-            # 1. Intentamos obtener el ID de todas las formas posibles
+            # 1. Try to get ID in every possible way
             conv_id = self._get_conversation_id(request_json)
             
             final_payload = {
@@ -132,7 +132,7 @@ class ZoaConversation:
                 phone_raw = str(request_json.get("phone") or "").replace("+", "").strip()
                 conv_id = f"{company_id}_{phone_raw}"
 
-            # 1. Filtramos los botones que tienen texto
+            # 1. Filter buttons that have text
             btn_texts = [str(request_json.get(f"bt{i}") or "").strip() for i in range(1, 4)]
             btn_texts = [t for t in btn_texts if t]
 
@@ -145,21 +145,21 @@ class ZoaConversation:
                     "text": request_json.get("text")
                 }
             else:
-                # 3. Construcción del objeto INTERACTIVE según estándar de Meta
+                # 3. Build INTERACTIVE object per Meta standard
                 formatted_buttons = []
                 for i, text in enumerate(btn_texts):
                     formatted_buttons.append({
                         "type": "reply",
                         "reply": {
                             "id": f"btn_{i+1}",
-                            "title": text[:20]  # Límite de WhatsApp
+                            "title": text[:20]  # WhatsApp limit
                         }
                     })
 
                 final_payload = {
                     "phone_number_id": str(company_id),
                     "conversation_id": conv_id,
-                    "type": "interactive", # <--- CAMBIADO: 'buttons_text' NO, 'interactive' SÍ
+                    "type": "interactive",  # Use 'interactive', not 'buttons_text'
                     "content": {
                         "type": "button",
                         "body": {"text": request_json.get("text") or "Selecciona una opción:"},
@@ -171,10 +171,10 @@ class ZoaConversation:
         elif msg_type == "template":
             endpoint = "/waba/messages/send/template"
             
-            # Prioridad 1: Usar ID directo si viene en el JSON
+            # Priority 1: Use direct ID if in JSON
             template_id = request_json.get("template_id")
             
-            # Prioridad 2: Si no hay ID, buscar por nombre
+            # Priority 2: If no ID, search by name
             if not template_id:
                 template_name = request_json.get("template_name")
                 template_id = self._get_template_id_by_name(template_name, company_id)
@@ -191,7 +191,7 @@ class ZoaConversation:
                 "header_type": request_json.get("header_type", "")
             }
 
-            # Lógica Base64
+            # Base64 logic
             b64_data = request_json.get("base64")
             if b64_data:
                 msg_data["header_type"] = "IMAGE"
@@ -210,9 +210,9 @@ class ZoaConversation:
         else:
             return {"error": f"Tipo de mensaje '{msg_type}' no soportado"}, 400
 
-        # --- EJECUCIÓN ---
+        # --- EXECUTION ---
         try:
-            # Limpiamos posibles dobles slashes en la URL
+            # Avoid double slashes in URL
             base_url = self.api_base.rstrip('/')
             url_post = f"{base_url}{endpoint}"
             
@@ -228,7 +228,7 @@ class ZoaConversation:
             return {"error": f"Error de red en Flow: {str(e)}"}, 500
 
     def assign(self, request_json):
-        """TU FUNCIÓN ORIGINAL (Sin cambios)"""
+        """Assigns a conversation to a user."""
         conv_id = request_json.get("conversation_id") or request_json.get("id")
         customer_phone = request_json.get("phone") or request_json.get("customer_phone")
         company_id = request_json.get("company_id")
@@ -260,10 +260,10 @@ class ZoaConversation:
 
     def status(self, request_json):
         """
-        Actualiza el sales_status. 
-        Ahora utiliza la construcción directa de ID que te funcionó en el script.
+        Updates sales_status.
+        Uses direct ID construction that works in the script.
         """
-        # 1. Intentamos construir el ID directamente como en tu Direct Call
+        # 1. Try to build ID directly
         conv_id = self._get_conversation_id(request_json)
         customer_phone = request_json.get("phone") or request_json.get("customer_phone")
         company_id = request_json.get("company_id")
@@ -282,7 +282,7 @@ class ZoaConversation:
         if not conv_id:
             return {"error": "No se pudo determinar el conversation_id"}, 404
 
-        # 3. Petición al endpoint (Priorizando PATCH que es el que te funcionó)
+        # 3. Request to endpoint (PATCH preferred)
         try:
             url_status = f"{self.api_base}/waba/conversations/{conv_id}/sales-status"
             payload = {"sales_status": new_status}
@@ -292,7 +292,7 @@ class ZoaConversation:
             # Usamos PATCH directamente ya que confirmaste que funciona
             response = requests.patch(url_status, headers=self.headers, json=payload)
             
-            # Si PATCH no existe en algún caso, fallback a POST
+            # If PATCH not available, fallback to POST
             if response.status_code == 405:
                 response = requests.post(url_status, headers=self.headers, json=payload)
 
@@ -310,28 +310,28 @@ class ZoaConversation:
         
     def assign_status(self, request_json):
         """
-        Orquestación dual: Asigna un usuario y cambia el estado de venta.
-        Utiliza el ID directo para evitar latencias de búsqueda.
+        Dual flow: Assign user and change sales status.
+        Uses direct ID to avoid lookup latency.
         """
-        # 1. Aseguramos el ID de la conversación una sola vez
+        # 1. Resolve conversation ID once
         conv_id = self._get_conversation_id(request_json)
         if not conv_id:
             return {"error": "No se pudo determinar el ID de la conversación"}, 400
             
-        # Inyectamos el ID en el JSON para que las funciones hijas no lo busquen
+        # Inject ID into JSON so child logic doesn't look it up again
         request_json["conversation_id"] = conv_id
         
         print(f"DEBUG: Iniciando proceso dual para {conv_id}")
 
-        # 2. Ejecutar Asignación
-        # Si manager_name es "", la función assign ya gestiona el user_id: null
+        # 2. Execute assignment
+        # If manager_name is "", assign already handles user_id: null
         a_res, a_code = self.assign(request_json)
         
-        # Si falla la asignación (y no es un error de "ya asignado"), paramos
+        # If assignment fails (and it's not "already assigned"), stop
         if a_code not in [200, 201, 204]:
             return {"error": "Falló la asignación", "details": a_res}, a_code
 
-        # 3. Ejecutar Cambio de Estado
+        # 3. Execute status change
         s_res, s_code = self.status(request_json)
         
         if s_code not in [200, 201, 204]:

@@ -36,7 +36,7 @@ class ZoaReadAll:
 
     def search(self, request_json):
         try:
-            # 1. BUSCAR CONTACTO
+            # 1. SEARCH CONTACT
             c_res, c_status = self.contact_manager.search(request_json)
             if c_status != 200 or not c_res.get("data"):
                 return {
@@ -49,10 +49,10 @@ class ZoaReadAll:
             contact = c_res.get("data")[0] if isinstance(c_res.get("data"), list) else c_res.get("data")
             contact_id = contact.get("id")
             
-            # 2. RESOLVER GESTOR Y SU TELÉFONO
+            # 2. RESOLVE MANAGER AND PHONE
             m_id = contact.get("user_id") or contact.get("manager_id")
             manager_name = "No asignado"
-            manager_phone = None  # <--- Inicializamos variable para el teléfono
+            manager_phone = None
             
             if m_id:
                 u_res, u_status = self.user_manager.search({"id": m_id})
@@ -62,10 +62,10 @@ class ZoaReadAll:
                     if isinstance(u_obj, dict):
                         # Extraer Nombre
                         manager_name = f"{u_obj.get('first_name', '')} {u_obj.get('last_name', '')}".strip() or u_obj.get("name")
-                        # Extraer Teléfono (ZOA suele usar 'mobile' o 'phone')
+                        # Extract phone (ZOA usually uses 'mobile' or 'phone')
                         manager_phone = u_obj.get("mobile") or u_obj.get("phone")
 
-            # 3. LISTAR CARDS Y MAPEAR STAGE_ID A NOMBRE
+            # 3. LIST CARDS AND MAP STAGE_ID TO NAME
             cards_open = []
             cards_res, cards_status = self.card_manager.list_by_contact(contact_id)
             
@@ -85,7 +85,7 @@ class ZoaReadAll:
                             "stage": st_name
                         })
 
-            # RETORNO FINAL CON EL TELÉFONO DEL GESTOR
+            # Final response with manager phone
             return {
                 "contact": {
                     "id": contact_id,
@@ -95,7 +95,7 @@ class ZoaReadAll:
                 "manager": {
                     "id": m_id,
                     "name": manager_name,
-                    "phone": manager_phone # <--- Aquí se incluye el teléfono
+                    "phone": manager_phone
                 },
                 "open_activities_count": len(cards_open),
                 "activities_details": cards_open

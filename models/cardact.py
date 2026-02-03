@@ -19,7 +19,7 @@ class ZoaCardAct:
         self.tag_manager = ZoaTags(self.token)
     
     def _resolve_user_id_by_name(self, name):
-        """Busca un usuario por nombre y devuelve su ID."""
+        """Looks up a user by name and returns their ID."""
         if not name:
             return None
         u_res, u_status = self.user_manager.search({"name": name})
@@ -33,15 +33,15 @@ class ZoaCardAct:
 
     def _resolve_tag_ids(self, tags_name, create_missing=False):
         """
-        Convierte nombres de tags en una lista de IDs (UUIDs).
+        Converts tag names into a list of IDs (UUIDs).
 
-        Si create_missing=True, las etiquetas que no existan se crean en ZOA
-        (usando el modelo ZoaTags) y también se devuelven sus IDs.
+        If create_missing=True, tags that don't exist are created in ZOA
+        (using ZoaTags model) and their IDs are returned as well.
         """
         if not tags_name:
             return []
         
-        # Mantener tanto el nombre original como el normalizado para búsqueda
+        # Keep both original and normalized name for search
         names_to_find = []
         if isinstance(tags_name, str):
             raw_names = [t for t in tags_name.split(",") if t.strip()]
@@ -61,7 +61,7 @@ class ZoaCardAct:
         resolved_ids = []
 
         for original_name, normalized_name in names_to_find:
-            # Buscar etiqueta existente por nombre (case-insensitive)
+            # Find existing tag by name (case-insensitive)
             tag_obj = next(
                 (
                     t
@@ -74,12 +74,12 @@ class ZoaCardAct:
             if tag_obj:
                 resolved_ids.append(tag_obj.get("id"))
             elif create_missing:
-                # Crear la etiqueta si no existe
+                # Create the tag if it doesn't exist
                 try:
                     create_payload = {"name": original_name}
                     created_tag, c_status = self.tag_manager.create(create_payload)
                     if c_status in (200, 201):
-                        # La API puede devolver el objeto en "data" o plano
+                        # API may return object in "data" or flat
                         data_ct = created_tag.get("data", created_tag)
                         resolved_ids.append(data_ct.get("id"))
                 except Exception as e:
@@ -89,9 +89,9 @@ class ZoaCardAct:
 
     def _get_context_ids(self, p_name, s_name, card_type):
         """
-        Versión ultra-diagnostic para identificar por qué se queda colgado.
+        Diagnostic helper to identify why the request might hang.
         """
-        # Cambiamos el orden: primero management porque es lo que vimos en tus imágenes
+        # Use management first for task type
         c_type_lower = str(card_type).lower()
         p_type = "management" if c_type_lower == "task" else "sales"
         
@@ -99,7 +99,7 @@ class ZoaCardAct:
         
         try:
             url = f"{self.api_base}/pipelines/pipelines?type={p_type}"
-            # Bajamos el timeout para que no se quede colgado el contenedor
+            # Lower timeout so the container doesn't hang
             response = requests.get(url, headers=self.headers, timeout=5)
             
             print(f"DEBUG: Respuesta recibida. Status Code: {response.status_code}")
@@ -113,7 +113,7 @@ class ZoaCardAct:
             print(f"DEBUG: Cantidad de pipelines encontrados: {len(data)}")
 
             if not data:
-                # Si management falla, probamos con 'task' como último recurso
+                # If management fails, try 'task' as fallback
                 print("DEBUG: Lista vacía. Reintentando con tipo 'task'...")
                 url_alt = f"{self.api_base}/pipelines/pipelines?type=task"
                 response = requests.get(url_alt, headers=self.headers, timeout=5)
@@ -137,7 +137,7 @@ class ZoaCardAct:
             stage_obj = None
             search_term = str(s_name).lower().strip() if s_name else ""
             
-            # Buscamos de forma flexible
+            # Search flexibly
             for s in stages:
                 title_s = str(s.get('title') or "").lower().strip()
                 name_s = str(s.get('name') or "").lower().strip()
@@ -170,7 +170,7 @@ class ZoaCardAct:
             return {"error": str(e)}, 500
 
     def _resolve_guests_ids(self, guests_names):
-        """Auxiliar para resolver nombres de invitados en IDs de usuario."""
+        """Helper to resolve guest names to user IDs."""
         if not guests_names: return []
         guests_ids = []
         names_list = [n.strip() for n in guests_names.split(",") if n.strip()]
@@ -215,7 +215,7 @@ class ZoaCardAct:
 
     def create(self, request_json):
         try:
-            # --- PARTE 1: CREACIÓN DE LA CARD ---
+            # --- PART 1: CARD CREATION ---
             c_type = request_json.get("card_type") or "opportunity"
             p_id, s_id = self._get_context_ids(
                 request_json.get("pipeline_name"), 
@@ -225,7 +225,7 @@ class ZoaCardAct:
             
             if not s_id: return {"error": f"No se pudo determinar la etapa para {c_type}"}, 404
 
-            # Resolver el ID del Manager
+            # Resolve Manager ID
             resolved_manager_id = self._resolve_user_id_by_name(request_json.get("manager_name"))
             print(f"DEBUG: Manager resuelto: {resolved_manager_id} para el nombre: {request_json.get('manager_name')}")
 
@@ -237,10 +237,9 @@ class ZoaCardAct:
 
             if not contact_id: return {"error": "Contacto no identificado"}, 404
 
-            # Resolver etiquetas: si no existen, se crean automáticamente
+            # Resolve tags: if they don't exist, create them automatically
             tag_ids = self._resolve_tag_ids(request_json.get("tags_name"), create_missing=True)
 
-            # --- CORRECCIÓN AQUÍ: CAMBIADO manager_id_id a manager_id ---
             card_payload = {
                 "stage_id": s_id,
                 "pipeline_id": p_id,
@@ -260,7 +259,7 @@ class ZoaCardAct:
             if response_card.status_code not in [200, 201]:
                 return res_card_json, response_card.status_code
 
-            # --- PARTE 2: CREACIÓN DE ACTIVIDAD ---
+            # --- PART 2: ACTIVITY CREATION ---
             if request_json.get("type_of_activity"):
                 guests_ids = self._resolve_guests_ids(request_json.get("guests_names"))
                 activity_title = request_json.get("activity_title") or f"Actividad: {request_json.get('title')}"
@@ -281,7 +280,7 @@ class ZoaCardAct:
                     "duration": str(request_json.get("duration") or "30"),
                     "description": request_json.get("activity_description") or request_json.get("description"),
                     "guests": guests_ids,
-                    # En la API de ZOA el gestor de la actividad se envía como user_id
+                    # ZOA API expects activity manager as user_id
                     "user_id": resolved_manager_id
                 }
                 
@@ -299,7 +298,7 @@ class ZoaCardAct:
             card_id = request_json.get("card_id")
             target_title = request_json.get("title")
             
-            # 1. LOCALIZAR ID DE LA CARD
+            # 1. LOCATE CARD ID
             if not card_id:
                 c_res, c_status = self.search(request_json)
                 if c_status == 200:
@@ -320,7 +319,7 @@ class ZoaCardAct:
 
             # 3. ACTUALIZAR CARD
             # 3. ACTUALIZAR CARD
-            # Si se envían nuevos nombres de etiquetas, resolvemos / creamos tags
+            # If new tag names are sent, resolve/create tags
             tag_ids = None
             if request_json.get("tags_name"):
                 tag_ids = self._resolve_tag_ids(request_json.get("tags_name"), create_missing=True)
@@ -336,17 +335,17 @@ class ZoaCardAct:
             if patch_card_payload:
                 requests.patch(f"{self.api_base}/pipelines/cards/{card_id}", headers=self.headers, json=patch_card_payload, timeout=10)
 
-            # 4. GESTIÓN DE ACTIVIDADES: BORRAR Y RECREAR (Para evitar duplicados y nombres erróneos)
+            # 4. ACTIVITY HANDLING: DELETE AND RECREATE (to avoid duplicates and wrong names)
             res_final = {"card_id_processed": card_id, "success": True}
             
-            # Buscamos actividades actuales de la card
+            # Fetch current activities for the card
             res_acts = requests.get(f"{self.api_base}/pipelines/activities?card_id={card_id}", headers=self.headers, timeout=10)
             
             if res_acts.status_code == 200:
                 activities_data = res_acts.json().get("data", [])
                 if isinstance(activities_data, dict): activities_data = [activities_data]
                 
-                # ELIMINAR TODAS LAS ANTERIORES
+                # DELETE ALL PREVIOUS ONES
                 for act in activities_data:
                     old_id = act.get("id")
                     if old_id:
@@ -380,7 +379,7 @@ class ZoaCardAct:
                     "date": final_date,
                     "start_time": final_time,
                     "duration": str(request_json.get("duration") or "30"),
-                    # En actualización también usamos user_id como gestor principal
+                    # On update we also use user_id as main manager
                     "user_id": resolved_manager_id,
                     "guests": guests_ids
                 }

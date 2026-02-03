@@ -22,7 +22,7 @@ class ZoaScheduler:
 
             db = firestore.client()
             
-            # Buscamos el documento en waba_accounts donde el ID del documento es el company_id
+            # Look up document in waba_accounts where doc ID is company_id
             doc_ref = db.collection(u'waba_accounts').document(company_id).get()
 
             if not doc_ref.exists:
@@ -31,11 +31,11 @@ class ZoaScheduler:
             data = doc_ref.to_dict()
             domains = data.get('domains', [])
 
-            # Navegamos según tu estructura: domains (array) -> 0 -> scheduler (map)
+            # Navigate structure: domains (array) -> 0 -> scheduler (map)
             # Buscamos el dominio que coincida con el phone_id solicitado
             target_domain = next((d for d in domains if d.get('phone_id') == company_id), None)
             
-            # Si no hay coincidencia exacta por ID, intentamos con el primero por defecto
+            # If no exact ID match, try first as default
             if not target_domain and domains:
                 target_domain = domains[0]
 

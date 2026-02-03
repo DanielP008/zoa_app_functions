@@ -13,17 +13,17 @@ class ZoaEmail:
 
     def send(self, request_json):
         """
-        Envía un email a través del endpoint de ZOA.
+        Sends an email via ZOA endpoint.
         """
-        # 1. Lista de campos que NO deben ir en el body de la API de ZOA
+        # 1. Fields that must NOT go in ZOA API body
         exclude = ['company_id', 'action', 'option', 'token']
         
-        # 2. Limpieza del request_json
-        # Mantenemos: to, subject, body, body_type, cc, bcc, reply_to, thread_id
+        # 2. Clean request_json
+        # Keep: to, subject, body, body_type, cc, bcc, reply_to, thread_id
         final_data = {k: v for k, v in request_json.items() if k not in exclude and v is not None}
 
         try:
-            # Enviamos la petición POST al endpoint específico
+            # Send POST to specific endpoint
             response = requests.post(self.api_base, headers=self.headers, json=final_data)
             return response.json(), response.status_code
         except Exception as e:

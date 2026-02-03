@@ -13,7 +13,7 @@ class ZoaTags:
 
     def search(self, request_json=None):
         """
-        Obtiene todas las etiquetas del tenant.
+        Gets all tags for the tenant.
         Endpoint: GET /api/pipelines/tags
         """
         url = f"{self.api_base}/pipelines/tags"
@@ -22,7 +22,7 @@ class ZoaTags:
             print(f"DEBUG: Consultando etiquetas en {url}")
             response = requests.get(url, headers=self.headers)
             
-            # Devolvemos el json y el status code para que el main.py lo gestione
+            # Return json and status code for main.py to handle
             return response.json(), response.status_code
             
         except Exception as e:
@@ -31,7 +31,7 @@ class ZoaTags:
     def create(self, request_json):
         url = f"{self.api_base}/pipelines/tags"
         
-        # CAMBIO CLAVE: El tipo debe ser 'sales' para que aparezca en el selector de las cards
+        # Type must be 'sales' so it appears in the card selector
         tag_type = request_json.get("type", "sales") 
         
         payload = {

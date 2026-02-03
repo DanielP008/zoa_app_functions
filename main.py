@@ -3,13 +3,13 @@ import json
 import firebase_admin
 from firebase_admin import firestore
 
-# Inicialización de Firebase (opcional si no usas Firestore en este script, pero mantenida por compatibilidad)
+# Firebase initialization (optional if you don't use Firestore in this script, kept for compatibility)
 if not firebase_admin._apps:
     firebase_admin.initialize_app()
 
 @functions_framework.http
 def main(request):
-    # --- 1. Gestión de CORS (Crucial para evitar bloqueos) ---
+    # --- 1. CORS handling (crucial to avoid blocking) ---
     if request.method == 'OPTIONS':
         headers = {
             'Access-Control-Allow-Origin': '*',
@@ -19,16 +19,16 @@ def main(request):
         }
         return ('', 204, headers)
 
-    # Headers de respuesta estándar
+    # Standard response headers
     res_headers = {'Access-Control-Allow-Origin': '*'}
 
-    # --- 2. Validación del JSON de entrada ---
+    # --- 2. Input JSON validation ---
     request_json = request.get_json(silent=True)
     if not request_json:
         print("ERROR: No se recibió JSON válido")
         return ({"error": "JSON body missing"}, 400, res_headers)
 
-    # Validamos campos obligatorios
+    # Validate required fields
     action = request_json.get("action")
     option = request_json.get("option")
     company_id = request_json.get("company_id")
@@ -40,7 +40,7 @@ def main(request):
         print("ALERTA: Falta company_id")
         return ({"error": "Se requiere 'company_id'"}, 400, res_headers)
 
-    # --- 3. Gestión del Token (Producción) ---
+    # --- 3. Token handling (production) ---
 
     if company_id == "572778529248319":
         from config import TOKEN_VIMA, API_BASE_PROD
@@ -51,7 +51,7 @@ def main(request):
         token = TOKEN
         api_base = API_BASE
 
-    # --- 4. Enrutamiento de Acciones (Asignación del Cliente) ---
+    # --- 4. Action routing (client assignment) ---
     client = None
     try:
         match action:
@@ -94,7 +94,7 @@ def main(request):
             case _:
                 return ({"error": f"Acción '{action}' no reconocida"}, 404, res_headers)
 
-        # --- 5. Ejecución de la Opción ---
+        # --- 5. Option execution ---
         match option:
             case "search":
                 result, status = client.search(request_json)
@@ -113,7 +113,7 @@ def main(request):
             case _:
                 return ({"error": f"Opción '{option}' no válida para '{action}'"}, 400, res_headers)
 
-        # Retorno exitoso
+        # Success response
         return (result, status, res_headers)
 
     except Exception as e:
