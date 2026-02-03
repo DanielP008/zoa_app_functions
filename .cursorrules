@@ -1,0 +1,132 @@
+# ZOA Flow - Project Rules
+
+## Code Style and Documentation
+
+### Comments and Documentation
+- All code comments MUST be written in English
+- Use clear, concise English for docstrings, inline comments, and documentation
+- Spanish is only allowed in user-facing error messages and log outputs when necessary
+
+### Architecture Patterns
+
+#### API Endpoints
+- Every endpoint/action MUST have its corresponding class defined in `interface.py`
+- The interface class should mirror the model structure and provide a clean abstraction layer
+- Example: If you have `models/contacts.py` with `ZoaContact`, there should be a corresponding interface in `interface.py`
+
+#### Model Classes
+- Each model module (contacts, cards, activities, etc.) should have:
+  - A main class (e.g., `ZoaContact`, `ZoaCard`)
+  - Proper initialization with `token` and `api_base`
+  - Standard CRUD methods: `search()`, `create()`, `update()` where applicable
+  - Helper methods prefixed with `_` (e.g., `_resolve_tag_ids()`)
+
+#### Main Router (`main.py`)
+- Use the pattern: check action → import model → execute option
+- All responses MUST include CORS headers
+- Always validate required fields (`company_id`, `action`, `option`) before processing
+
+### Configuration
+- Use `config.py` for API base URL and token configuration
+- Never hardcode credentials in code files
+- Firebase credentials belong in `firebase.json` (keep secure, don't commit)
+
+### Error Handling
+- Always use try-except blocks for external API calls
+- Return tuple format: `(result_dict, status_code)`
+- Include descriptive error messages in Spanish for end users when appropriate
+- Use English for technical/debug error messages
+
+### Testing
+- All new endpoints should have corresponding tests in `/tests`
+- Test files should be named `test_<module>.py`
+- Use pytest fixtures from `conftest.py`
+- Tests should be idempotent (use timestamps in test data titles)
+
+## File Organization
+
+```
+zoa_flow_zoa/
+├── main.py              # Entry point and request router
+├── config.py            # Configuration (API URL, token)
+├── interface.py         # Interface classes for all endpoints
+├── firebase.json        # Firebase credentials (not in git)
+├── models/              # Business logic modules
+│   ├── contacts.py
+│   ├── cards.py
+│   ├── activities.py
+│   └── ...
+└── tests/               # Pytest test suite
+    ├── conftest.py
+    ├── test_contacts.py
+    └── ...
+```
+
+## Imports
+- Use `from config import API_BASE, TOKEN` in models for configuration
+- Use `from models.xxx import YYY` pattern for cross-module imports
+- Never use relative imports outside of the models package
+
+## Debug Logging
+- Use descriptive prefixes for debug logs: `[FLOW_ZOA_DEBUG]`, `[CARDACT_DEBUG]`
+- Include context in logs: what's being called, with what parameters, and the result
+
+## Docker and Deployment
+- The service runs via `functions-framework` targeting `main`
+- Docker configuration is in `Dockerfile` and `docker-compose.yml`
+- Firebase credentials are mounted as volume in docker-compose
+
+## Examples
+
+### Adding a New Endpoint
+
+1. **Create model class** in `models/new_module.py`:
+```python
+from config import API_BASE, TOKEN
+
+class ZoaNewModule:
+    def __init__(self, token):
+        self.token = token
+        self.api_base = API_BASE
+        self.headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "apiKey": f"{self.token}"
+        }
+    
+    def search(self, request_json):
+        """Search for entities. Returns (result, status_code)."""
+        # Implementation
+        return data, 200
+```
+
+2. **Add to main.py router**:
+```python
+elif action == "new_module":
+    from models.new_module import ZoaNewModule
+    client = ZoaNewModule(token)
+```
+
+3. **Add interface class** in `interface.py`:
+```python
+class NewModuleInterface:
+    """Interface for new module operations."""
+    
+    def search(self, **kwargs):
+        """Search entities by criteria."""
+        pass
+```
+
+4. **Create tests** in `tests/test_new_module.py`:
+```python
+class TestNewModule:
+    def test_search(self, api_config, headers):
+        """Test searching entities."""
+        payload = {
+            "company_id": api_config["company_id"],
+            "action": "new_module",
+            "option": "search"
+        }
+        response = requests.post(api_config["base_url"], headers=headers, json=payload)
+        assert response.status_code == 200
+```
