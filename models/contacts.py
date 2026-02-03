@@ -17,18 +17,21 @@ class ZoaContact:
     def _enrich_with_manager_name(self, data):
         """
         Método auxiliar para añadir el manager_name a la respuesta del contacto.
+        Compatible con estructura paginada: {success, data: [...], total, page, page_size, total_pages}
         """
         if not isinstance(data, dict):
             return data
             
         # Extraemos el objeto de contacto o lista de contactos
+        # La nueva estructura paginada mantiene 'data' como lista o objeto
         contact_data = data.get("data")
         
-        # Si es una lista, iteramos (aunque search suele buscar uno específico)
+        # Si es una lista, iteramos sobre todos los contactos (puede venir paginado)
         if isinstance(contact_data, list):
             for contact in contact_data:
                 self._add_manager_name_to_contact(contact)
         elif isinstance(contact_data, dict):
+            # Caso de respuesta con un solo contacto como objeto
             self._add_manager_name_to_contact(contact_data)
             
         return data
@@ -170,14 +173,16 @@ class ZoaContact:
             c_res, c_status = self.search(request_json)
             
             # Función auxiliar interna para extraer ID de la respuesta de ZOA
-            # Utiliza una función interna llamada extract_id para navegar en la respuesta de la API de ZOA (que suele venir envuelta en una llave llamada data) y sacar el UUID del contacto
+            # Compatible con estructura paginada: {success, data: [...], total, page, ...}
             def extract_id(res):
                 if not isinstance(res, dict): return None
-                data = res.get("data", [])
-                if isinstance(data, list) and len(data) > 0:
-                    return data[0].get("id")
-                if isinstance(data, dict):
-                    return data.get("id")
+                data_content = res.get("data", [])
+                # Si data es una lista (puede venir paginada), tomamos el primer elemento
+                if isinstance(data_content, list) and len(data_content) > 0:
+                    return data_content[0].get("id")
+                # Si data es un objeto directo (un solo contacto)
+                if isinstance(data_content, dict):
+                    return data_content.get("id")
                 return None
 
             contact_id = extract_id(c_res)
@@ -202,9 +207,13 @@ class ZoaContact:
         m_name = request_json.get("manager_name") or request_json.get("new_manager_name")
         if m_name:
             u_res, u_status = self.user_manager.search({"name": m_name})
-            if u_status == 200:
-                u_data = u_res.get("data")
-                manager_id = u_data[0].get("id") if isinstance(u_data, list) and u_data else u_data.get("id") if isinstance(u_data, dict) else None
+            if u_status == 200 and isinstance(u_res, dict):
+                u_data = u_res.get("data", [])
+                # Compatible con estructura paginada: puede venir como lista o objeto
+                if isinstance(u_data, list) and len(u_data) > 0:
+                    manager_id = u_data[0].get("id")
+                elif isinstance(u_data, dict):
+                    manager_id = u_data.get("id")
 
         # 3. PAYLOAD DE ACTUALIZACIÓN
         # Si filtramos por nombre, el 'phone' del request es el NUEVO.
