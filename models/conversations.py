@@ -11,7 +11,7 @@ class ZoaConversation:
             "Accept": "application/json",
             "apiKey": self.token
         }
-        self.user_manager = ZoaUser(self.token)
+        self.user_manager = ZoaUser(self.token, api_base)
 
     def _get_template_id_by_name(self, template_name, company_id):
         """Finds the template ID by iterating through all API pages."""

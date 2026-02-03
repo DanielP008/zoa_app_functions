@@ -11,7 +11,7 @@ class ZoaContact:
             "Accept": "application/json",
             "apiKey": f"{self.token}"
         }
-        self.user_manager = ZoaUser(self.token)
+        self.user_manager = ZoaUser(self.token, api_base)
         
 
     def _enrich_with_manager_name(self, data):

@@ -14,9 +14,9 @@ class ZoaCardAct:
             "Accept": "application/json",
             "apiKey": f"{self.token}"
         }
-        self.contact_manager = ZoaContact(self.token)
-        self.user_manager = ZoaUser(self.token)
-        self.tag_manager = ZoaTags(self.token)
+        self.contact_manager = ZoaContact(self.token, api_base)
+        self.user_manager = ZoaUser(self.token, api_base)
+        self.tag_manager = ZoaTags(self.token, api_base)
     
     def _resolve_user_id_by_name(self, name):
         """Looks up a user by name and returns their ID."""

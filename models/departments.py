@@ -11,7 +11,7 @@ class ZoaDepartment:
             "Accept": "application/json",
             "apiKey": f"{self.token}"
         }
-        self.contact_manager = ZoaContact(self.token)
+        self.contact_manager = ZoaContact(self.token, api_base)
 
     def search(self, request_json):
         mobile = request_json.get("phone") or request_json.get("mobile")

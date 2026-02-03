@@ -13,9 +13,9 @@ class ZoaActivity:
             "Accept": "application/json",
             "apiKey": f"{self.token}"
         }
-        self.contact_manager = ZoaContact(self.token)
-        self.card_manager = ZoaCard(self.token) 
-        self.user_manager = ZoaUser(self.token)
+        self.contact_manager = ZoaContact(self.token, api_base)
+        self.card_manager = ZoaCard(self.token, api_base) 
+        self.user_manager = ZoaUser(self.token, api_base)
     
     def search(self, request_json):
         """

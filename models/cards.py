@@ -13,9 +13,9 @@ class ZoaCard:
             "Accept": "application/json",
             "apiKey": f"{self.token}"
         }
-        self.contact_manager = ZoaContact(self.token)
-        self.user_manager = ZoaUser(self.token)
-        self.tag_manager = ZoaTags(self.token)
+        self.contact_manager = ZoaContact(self.token, api_base)
+        self.user_manager = ZoaUser(self.token, api_base)
+        self.tag_manager = ZoaTags(self.token, api_base)
 
     def _resolve_tag_ids(self, tags_name):
         """Converts tag names into a list of IDs (UUIDs)."""

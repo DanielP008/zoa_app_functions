@@ -14,9 +14,9 @@ class ZoaReadAll:
             "Accept": "application/json",
             "apiKey": f"{self.token}"
         }
-        self.contact_manager = ZoaContact(self.token)
-        self.card_manager = ZoaCard(self.token)
-        self.user_manager = ZoaUser(self.token)
+        self.contact_manager = ZoaContact(self.token, api_base)
+        self.card_manager = ZoaCard(self.token, api_base)
+        self.user_manager = ZoaUser(self.token, api_base)
 
     def _get_stage_map(self):
         """Obtiene todos los pipelines y crea un diccionario de {id_etapa: nombre_etapa}."""
