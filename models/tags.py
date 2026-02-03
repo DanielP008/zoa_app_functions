@@ -1,10 +1,10 @@
 import requests
 
 class ZoaTags:
-    def __init__(self, token=None):
+    def __init__(self, token=None, api_base=None):
         from config import API_BASE, TOKEN
         self.token = token or TOKEN
-        self.api_base = API_BASE
+        self.api_base = api_base or API_BASE
         self.headers = {
             "Content-Type": "application/json",
             "Accept": "application/json",

@@ -41,8 +41,15 @@ def main(request):
         return ({"error": "Se requiere 'company_id'"}, 400, res_headers)
 
     # --- 3. Gestión del Token (Producción) ---
-    from config import TOKEN
-    token = TOKEN
+
+    if company_id == "VIMA":
+        from config import TOKEN_VIMA, API_BASE_PROD
+        token = TOKEN_VIMA
+        api_base = API_BASE_PROD
+    else:
+        from config import TOKEN, API_BASE
+        token = TOKEN
+        api_base = API_BASE
 
     # --- 4. Enrutamiento de Acciones (Asignación del Cliente) ---
     client = None
@@ -50,40 +57,40 @@ def main(request):
         match action:
             case "contacts":
                 from models.contacts import ZoaContact
-                client = ZoaContact(token)
+                client = ZoaContact(token, api_base)
             case "users":
                 from models.users import ZoaUser
-                client = ZoaUser(token)
+                client = ZoaUser(token, api_base)
             case "cards":
                 from models.cards import ZoaCard
-                client = ZoaCard(token)
+                client = ZoaCard(token, api_base)
             case "cardact":
                 from models.cardact import ZoaCardAct
-                client = ZoaCardAct(token)
+                client = ZoaCardAct(token, api_base)
             case "activities":
                 from models.activities import ZoaActivity
-                client = ZoaActivity(token)
+                client = ZoaActivity(token, api_base)
             case "departments":
                 from models.departments import ZoaDepartment
-                client = ZoaDepartment(token)
+                client = ZoaDepartment(token, api_base)
             case "tags":
                 from models.tags import ZoaTags
-                client = ZoaTags(token)
+                client = ZoaTags(token, api_base)
             case "readall":
                 from models.readall import ZoaReadAll
-                client = ZoaReadAll(token)
+                client = ZoaReadAll(token, api_base)
             case "email_module":
                 from models.email_module import ZoaEmail
-                client = ZoaEmail(token)
+                client = ZoaEmail(token, api_base)
             case "conversations":
                 from models.conversations import ZoaConversation
-                client = ZoaConversation(token)
+                client = ZoaConversation(token, api_base)
             case "notes":
                 from models.notes import ZoaNote
-                client = ZoaNote(token)
+                client = ZoaNote(token, api_base)
             case "scheduler":
                 from models.scheduler import ZoaScheduler
-                client = ZoaScheduler(token)
+                client = ZoaScheduler(token, api_base)
             case _:
                 return ({"error": f"Acción '{action}' no reconocida"}, 404, res_headers)
 
