@@ -58,7 +58,7 @@ def main(request):
         print("ALERTA: Falta company_id")
         return ({"error": "Se requiere 'company_id'"}, 400, res_headers)
 
-        # --- 3. Token handling via Firestore company configuration ---
+    # --- 3. Token handling via Firestore company configuration ---
     #
     # We resolve the API token and environment (test/prod) from Firestore
     # based on the provided company_id.
@@ -71,11 +71,10 @@ def main(request):
         # If is_test is True, we use the dev API base (API_BASE), otherwise production (API_BASE_PROD).
         if is_test:
             api_base = ENV_API_BASE
-            # token is already resolved from Firestore, but if we needed env var logic:
-            # token = ENV_TOKEN
+            print(f"[DEBUG] Using TEST environment: api_base={api_base}, token length={len(token) if token else 0}")
         else:
             api_base = ENV_API_BASE_PROD
-            # token = ENV_TOKEN_VIMA (if we were taking it from env)
+            print(f"[DEBUG] Using PROD environment: api_base={api_base}, token length={len(token) if token else 0}")
     else:
         # Fallback to static config for backwards compatibility.
         print(
@@ -85,6 +84,7 @@ def main(request):
         # Use defaults matching config.py logic
         token = ENV_TOKEN
         api_base = ENV_API_BASE
+        print(f"[DEBUG] Using FALLBACK config: api_base={api_base}, token length={len(token) if token else 0}")
 
     # --- 4. Action routing (client assignment) ---
     client = None
