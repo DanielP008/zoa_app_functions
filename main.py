@@ -1,10 +1,25 @@
+import os
+from dotenv import load_dotenv
 import functions_framework
 import json
 import firebase_admin
 from firebase_admin import firestore
 
 from firebase_config import get_company_token_and_env
-from config import API_BASE, API_BASE_PROD, TOKEN  # reuse existing config (use API_BASE if is_test is False)
+
+load_dotenv()
+
+# --- Configuration Defaults (from .env matches config.py names) ---
+# Default/Dev
+ENV_API_BASE = os.getenv("API_BASE", "https://dev.api.zoasuite.com/api")
+ENV_TOKEN = os.getenv("TOKEN", "sk_test_9f8a7b6c5d4e3f2a")
+
+# Prod/VIMA
+ENV_API_BASE_PROD = os.getenv("API_BASE_PROD", "https://api.zoasuite.com/api")
+ENV_TOKEN_VIMA = os.getenv("TOKEN_VIMA")
+
+# Fallback default token
+DEFAULT_TOKEN = ENV_TOKEN
 
 # Firebase initialization (optional if you don't use Firestore in this script, kept for compatibility)
 if not firebase_admin._apps:
@@ -52,17 +67,24 @@ def main(request):
     if token_info:
         token, is_test = token_info
 
-        # Choose base URL depending on environment.
-        # If is_test is True, we use the dev API base, otherwise production.
-        api_base = API_BASE if is_test else API_BASE_PROD
+        # Choose base URL and Token depending on environment.
+        # If is_test is True, we use the dev API base (API_BASE), otherwise production (API_BASE_PROD).
+        if is_test:
+            api_base = ENV_API_BASE
+            # token is already resolved from Firestore, but if we needed env var logic:
+            # token = ENV_TOKEN
+        else:
+            api_base = ENV_API_BASE_PROD
+            # token = ENV_TOKEN_VIMA (if we were taking it from env)
     else:
         # Fallback to static config for backwards compatibility.
         print(
             f"ALERT: No Firestore configuration found for company_id '{company_id}'. "
-            f"Falling back to static config."
+            f"Falling back to static config (TOKEN/API_BASE)."
         )
-        token = TOKEN
-        api_base = API_BASE
+        # Use defaults matching config.py logic
+        token = ENV_TOKEN
+        api_base = ENV_API_BASE
 
     # --- 4. Action routing (client assignment) ---
     client = None

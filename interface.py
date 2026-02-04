@@ -1,4 +1,11 @@
-from config import TOKEN
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# Default to DEV credentials if not provided
+DEFAULT_TOKEN = os.getenv("TOKEN")
+
 
 # Model imports
 from models.contacts import ZoaContact
@@ -18,7 +25,7 @@ class ZoaBaseInterface:
     """Base class that handles common validation and dispatch logic."""
     
     def __init__(self, token=None):
-        self.token = token or TOKEN
+        self.token = token or DEFAULT_TOKEN
         self.client = None
         self.action_name = None
 
