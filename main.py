@@ -3,7 +3,8 @@ import json
 import firebase_admin
 from firebase_admin import firestore
 
-from firebase_config import get_company_config
+from firebase_config import get_company_token_and_env
+from config import API_BASE, API_BASE_PROD, TOKEN  # reuse existing config (use API_BASE if is_test is False)
 
 # Firebase initialization (optional if you don't use Firestore in this script, kept for compatibility)
 if not firebase_admin._apps:
@@ -42,44 +43,24 @@ def main(request):
         print("ALERTA: Falta company_id")
         return ({"error": "Se requiere 'company_id'"}, 400, res_headers)
 
-    # --- 3. Token handling via Firestore company configuration ---
+        # --- 3. Token handling via Firestore company configuration ---
     #
-    # We resolve the API configuration dynamically from Firestore based on the
-    # provided company_id (or alias). This allows us to avoid hardcoding tokens
-    # and endpoints in the code.
-    company_config = get_company_config(str(company_id))
+    # We resolve the API token and environment (test/prod) from Firestore
+    # based on the provided company_id.
+    token_info = get_company_token_and_env(str(company_id))
 
-    if company_config:
-        # Token always viene de Firestore
-        token = company_config.get("token")
+    if token_info:
+        token, is_test = token_info
 
-        if not token:
-            print(
-                f"ERROR: Firestore config for company_id '{company_id}' "
-                f"is missing 'token'"
-            )
-            return (
-                {
-                    "error": "Company configuration is incomplete",
-                    "details": "Missing 'token' in Firestore document",
-                },
-                500,
-                res_headers,
-            )
-
-        # La URL base se puede guardar opcionalmente en Firestore; si no existe,
-        # usamos la de producción por defecto.
-        from config import API_BASE_PROD
-
-        api_base = company_config.get("api_base") or API_BASE_PROD
+        # Choose base URL depending on environment.
+        # If is_test is True, we use the dev API base, otherwise production.
+        api_base = API_BASE if is_test else API_BASE_PROD
     else:
-        # Fallback to static config for backwards compatibility
+        # Fallback to static config for backwards compatibility.
         print(
-            f"ALERTA: No Firestore configuration found for company_id '{company_id}'. "
+            f"ALERT: No Firestore configuration found for company_id '{company_id}'. "
             f"Falling back to static config."
         )
-        from config import TOKEN, API_BASE
-
         token = TOKEN
         api_base = API_BASE
 
