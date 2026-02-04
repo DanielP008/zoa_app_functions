@@ -90,6 +90,9 @@ class ZoaCardAct:
     def _get_context_ids(self, p_name, s_name, card_type):
         """
         Diagnostic helper to identify why the request might hang.
+
+        Pipelines allowed in production: "Ventas", "Renovaciones".
+        Pipelines allowed in test: "Principal", "Revisiones".
         """
         # Use management first for task type
         c_type_lower = str(card_type).lower()
@@ -217,11 +220,11 @@ class ZoaCardAct:
         try:
             # --- PART 1: CARD CREATION ---
             c_type = request_json.get("card_type") or "opportunity"
-            p_id, s_id = self._get_context_ids(
-                request_json.get("pipeline_name"), 
-                request_json.get("stage_name"),
-                c_type
-            )
+            # If no stage_name is provided we default to "Nuevo"
+            pipeline_name = request_json.get("pipeline_name")
+            stage_name = request_json.get("stage_name") or "Nuevo"
+
+            p_id, s_id = self._get_context_ids(pipeline_name, stage_name, c_type)
             
             if not s_id: return {"error": f"No se pudo determinar la etapa para {c_type}"}, 404
 

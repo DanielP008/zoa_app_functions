@@ -15,18 +15,21 @@ class TestCardAct:
             "company_id": api_config["company_id"],
             "action": "cardact",
             "option": "create",
-            "title": f"Opp + Activity {datetime.now().strftime('%Y%m%d%H%M%S')}",
+            "title": f"Opp + Activity 2 {datetime.now().strftime('%Y%m%d%H%M%S')}",
             "phone": api_config["test_phone"],
             "card_type": "opportunity",
-            "pipeline_name": "Revisiones",
-            "stage_name": "Nuevo",
+            "pipeline_name": "Ventas",
+            "stage_name": "Perdido",
             "amount": 5000,
             "description": "Test opportunity with activity",
-            "type_of_activity": "llamada",
-            "activity_title": "Follow-up call",
+            "type_of_activity": "reunion",
+            "activity_title": "Follow-up reunion",
+            "activity_description": "Revisar con el cliente",
             "date": tomorrow,
-            "start_time": "10:00",
-            "duration": "30"
+            "start_time": "14:00",
+            "duration": "30",
+            "guests_names": "Alejandro Martínez, Julio Martinez",    # names of the users to invite to the activity
+            "manager_name": "Miguel Gil" #same user as the one who created the card
         }
 
         response = requests.post(
@@ -59,9 +62,12 @@ class TestCardAct:
             "description": "Test task with activity",
             "type_of_activity": "reunion",
             "activity_title": "Planning meeting",
+            "activity_description": "Revisar con el cliente",
             "date": tomorrow,
             "start_time": "14:00",
-            "duration": "60"
+            "duration": "60",
+            "guests_names": "Alejandro Martínez, Julio Martinez",    # names of the users to invite to the activity
+            "manager_name": "Miguel Gil" #same user as the one who created the card
         }
 
         response = requests.post(
