@@ -3,6 +3,8 @@ import json
 import firebase_admin
 from firebase_admin import firestore
 
+from firebase_config import get_company_config
+
 # Firebase initialization (optional if you don't use Firestore in this script, kept for compatibility)
 if not firebase_admin._apps:
     firebase_admin.initialize_app()
@@ -40,14 +42,44 @@ def main(request):
         print("ALERTA: Falta company_id")
         return ({"error": "Se requiere 'company_id'"}, 400, res_headers)
 
-    # --- 3. Token handling (production) ---
+    # --- 3. Token handling via Firestore company configuration ---
+    #
+    # We resolve the API configuration dynamically from Firestore based on the
+    # provided company_id (or alias). This allows us to avoid hardcoding tokens
+    # and endpoints in the code.
+    company_config = get_company_config(str(company_id))
 
-    if company_id == "572778529248319":
-        from config import TOKEN_VIMA, API_BASE_PROD
-        token = TOKEN_VIMA
-        api_base = API_BASE_PROD
+    if company_config:
+        # Token always viene de Firestore
+        token = company_config.get("token")
+
+        if not token:
+            print(
+                f"ERROR: Firestore config for company_id '{company_id}' "
+                f"is missing 'token'"
+            )
+            return (
+                {
+                    "error": "Company configuration is incomplete",
+                    "details": "Missing 'token' in Firestore document",
+                },
+                500,
+                res_headers,
+            )
+
+        # La URL base se puede guardar opcionalmente en Firestore; si no existe,
+        # usamos la de producción por defecto.
+        from config import API_BASE_PROD
+
+        api_base = company_config.get("api_base") or API_BASE_PROD
     else:
+        # Fallback to static config for backwards compatibility
+        print(
+            f"ALERTA: No Firestore configuration found for company_id '{company_id}'. "
+            f"Falling back to static config."
+        )
         from config import TOKEN, API_BASE
+
         token = TOKEN
         api_base = API_BASE
 
