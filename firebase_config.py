@@ -32,20 +32,19 @@ def get_company_token_and_env(company_id: str) -> Optional[Tuple[str, bool]]:
         return None
 
     if not docs:
-        print(f"[DEBUG] No Firestore document found for company_id: {company_id}")
+        print(f"[FLOW-ZOA] No Firestore document for company_id: {company_id}", flush=True)
         return None
 
     doc = docs[0]
-    print(f"[DEBUG] Found Firestore document: {doc.id} for company_id: {company_id}")
+    print(f"[FLOW-ZOA] Firestore doc_id={doc.id} for company_id: {company_id}", flush=True)
     data = doc.to_dict() or {}
     token = data.get("token")
 
     if not token:
-        print(f"[ERROR] Document {doc.id} found but 'token' field is missing or empty")
+        print(f"[FLOW-ZOA] Document {doc.id} has no 'token' field", flush=True)
         return None
 
     # is_test is True if the Firestore document id is '0000-test'
     is_test = (doc.id == "0000-test")
-    print(f"[DEBUG] Resolved token for company_id {company_id}: is_test={is_test}, doc_id={doc.id}")
     return token, is_test
 

@@ -1,4 +1,5 @@
 import os
+import sys
 from dotenv import load_dotenv
 import functions_framework
 import json
@@ -71,20 +72,19 @@ def main(request):
         # If is_test is True, we use the dev API base (API_BASE), otherwise production (API_BASE_PROD).
         if is_test:
             api_base = ENV_API_BASE
-            print(f"[DEBUG] Using TEST environment: api_base={api_base}, token length={len(token) if token else 0}")
+            print(f"[FLOW-ZOA] company_id={company_id} -> TEST env, api_base={api_base}", flush=True)
         else:
             api_base = ENV_API_BASE_PROD
-            print(f"[DEBUG] Using PROD environment: api_base={api_base}, token length={len(token) if token else 0}")
+            print(f"[FLOW-ZOA] company_id={company_id} -> PROD env, api_base={api_base}", flush=True)
     else:
         # Fallback to static config for backwards compatibility.
         print(
-            f"ALERT: No Firestore configuration found for company_id '{company_id}'. "
-            f"Falling back to static config (TOKEN/API_BASE)."
+            f"[FLOW-ZOA] company_id={company_id} -> NO Firestore doc, using FALLBACK (ENV_TOKEN/ENV_API_BASE)",
+            flush=True,
         )
-        # Use defaults matching config.py logic
         token = ENV_TOKEN
         api_base = ENV_API_BASE
-        print(f"[DEBUG] Using FALLBACK config: api_base={api_base}, token length={len(token) if token else 0}")
+        print(f"[FLOW-ZOA] fallback api_base={api_base}", flush=True)
 
     # --- 4. Action routing (client assignment) ---
     client = None
