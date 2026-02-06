@@ -145,6 +145,16 @@ def main(request):
                 result, status = client.status(request_json)
             case "assign_status":
                 result, status = client.assign_status(request_json)
+            case "get_template_id":
+                template_name = request_json.get("template_name")
+                if not template_name:
+                    result, status = {"error": "Falta 'template_name'"}, 400
+                else:
+                    t_id = client._get_template_id_by_name(template_name, company_id)
+                    if t_id:
+                        result, status = {"template_id": t_id}, 200
+                    else:
+                        result, status = {"error": f"Template '{template_name}' no encontrado"}, 404
             case _:
                 return ({"error": f"Opción '{option}' no válida para '{action}'"}, 400, res_headers)
 
