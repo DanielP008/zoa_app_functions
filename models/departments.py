@@ -30,7 +30,6 @@ class ZoaDepartment:
             
             # ID que viene del contacto
             m_id_ref = str(contact.get("manager_id") or "").strip().lower()
-            print(f"DEBUG DEPARTMENTS: ID Manager buscado (desde contacto): '{m_id_ref}'")
 
             if not m_id_ref or m_id_ref == "none":
                 return {"error": "Contacto sin gestor asignado en ZOA"}, 404
@@ -40,13 +39,11 @@ class ZoaDepartment:
             response = requests.get(url_dept, headers=self.headers, timeout=10)
             
             if response.status_code != 200:
-                print(f"DEBUG DEPARTMENTS: Error API ZOA ({response.status_code}): {response.text}")
                 return {"error": "No se pudo obtener el equipo del departamento"}, response.status_code
 
             dept_data = response.json()
             payload = dept_data.get("data", {})
             users_list = payload.get("users", [])
-            print(f"DEBUG DEPARTMENTS: Usuarios encontrados en el departamento: {len(users_list)}")
 
             team_details = []
             extensions_only = []
@@ -58,15 +55,11 @@ class ZoaDepartment:
                 u_id = str(user.get("id") or "").strip().lower()
                 u_full_name = f"{user.get('first_name', '')} {user.get('last_name', '')}".strip()
                 
-                # Comparison log
-                print(f"DEBUG DEPARTMENTS: Comparando '{u_id}' == '{m_id_ref}' | Miembro: {u_full_name} | Ext: {ext}")
-                
                 if ext:
                     member_info = {"name": u_full_name, "extension": ext}
                     
                     # Verificación de ID
                     if u_id == m_id_ref:
-                        print(f"DEBUG DEPARTMENTS: MATCH ENCONTRADO para {u_full_name}")
                         member_info["is_primary"] = True
                         primary_manager_extension = ext
                     
@@ -75,7 +68,6 @@ class ZoaDepartment:
 
             # 4. SAFETY HANDLING (if match failed)
             if primary_manager_extension is None and team_details:
-                print("DEBUG DEPARTMENTS: No hubo match de ID. Aplicando failsafe (primer usuario = principal)")
                 primary_manager_extension = team_details[0]["extension"]
                 team_details[0]["is_primary"] = True
 
@@ -92,5 +84,4 @@ class ZoaDepartment:
             }, 200
 
         except Exception as e:
-            print(f"DEBUG DEPARTMENTS ERROR CRÍTICO: {str(e)}")
             return {"error": str(e)}, 500

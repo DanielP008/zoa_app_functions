@@ -40,5 +40,4 @@ class ZoaScheduler:
             }, 200
 
         except Exception as e:
-            print(f"Error en Scheduler: {str(e)}")
             return {"error": str(e)}, 500

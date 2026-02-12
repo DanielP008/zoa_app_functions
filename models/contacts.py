@@ -68,7 +68,6 @@ class ZoaContact:
             url = f"{search_path}/mobile/{clean_phone_plus}"
             
             try:
-                print(f"DEBUG: Buscando contacto (con +) en {url}")
                 response = requests.get(url, headers=self.headers)
                 data = response.json()
                 
@@ -81,7 +80,6 @@ class ZoaContact:
                 if not raw_phone.startswith("+"):
                     clean_phone_no_plus = raw_phone
                     url_no_plus = f"{search_path}/mobile/{clean_phone_no_plus}"
-                    print(f"DEBUG: Falló con +. Probando sin + en {url_no_plus}")
                     response_no_plus = requests.get(url_no_plus, headers=self.headers)
                     data_no_plus = response_no_plus.json()
                     
@@ -105,7 +103,6 @@ class ZoaContact:
             return {"error": "Falta criterio de búsqueda (phone, mobile, nif, email o name)"}, 400
 
         try:
-            print(f"DEBUG: Buscando contacto en {url}")
             response = requests.get(url, headers=self.headers)
             data = response.json()
             if response.status_code == 200 and data.get("success") is True:
@@ -120,12 +117,9 @@ class ZoaContact:
         """
         manager_name = request_json.get("manager_name")
         resolved_manager_id = None
-        print("entro aqui")
 
         if manager_name:
-            print(f"DEBUG: Intentando buscar manager: {manager_name}")
             u_res, u_status = self.user_manager.search({"name": manager_name})
-            print(f"DEBUG: Status búsqueda: {u_status} | Respuesta: {u_res}")
             
             if u_status == 200:
                 if isinstance(u_res, list) and len(u_res) > 0:
@@ -134,7 +128,7 @@ class ZoaContact:
                     # ZOA sometimes returns the object under a 'data' key
                     resolved_manager_id = u_res.get("id") or u_res.get("data", {}).get("id")
             else:
-                print(f"DEBUG: No se pudo encontrar el manager. Error: {u_res}")
+                pass
 
         # 2. Build final payload for ZOA
         data = {
@@ -148,7 +142,6 @@ class ZoaContact:
             "office_ids": request_json.get("office_ids", []),
             "manager_id": resolved_manager_id  # Resolved manager ID
         }
-        print(data)
 
         # 3. Final request to ZOA
         try:
@@ -190,15 +183,11 @@ class ZoaContact:
             # FALLBACK: If not found by phone, search by NAME
             if not contact_id and request_json.get("name"):
                 name_to_search = request_json.get("name")
-                print(f"DEBUG: Not found by phone. Fallback search by name: {name_to_search}")
                 
                 # Call search with name only
                 c_res_name, c_status_name = self.search({"name": name_to_search})
                 contact_id = extract_id(c_res_name)
                 
-                if contact_id:
-                    print(f"DEBUG: Encontrado por nombre! ID: {contact_id}")
-
         if not contact_id:
             return {"error": "No se localizó el contacto por ningún criterio (teléfono/nombre)"}, 404
 
@@ -232,7 +221,6 @@ class ZoaContact:
         # 4. PATCH request
         try:
             url_zoa = f"{self.api_base}/pipelines/contacts/{contact_id}"
-            print(f"DEBUG: Realizando PATCH a {url_zoa} con data: {clean_patch}")
             response = requests.patch(url_zoa, headers=self.headers, json=clean_patch)
             return response.json(), response.status_code
         except Exception as e:

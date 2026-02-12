@@ -1,5 +1,6 @@
 import os
 import sys
+import logging
 from dotenv import load_dotenv
 import functions_framework
 import json
@@ -9,6 +10,10 @@ from firebase_admin import firestore
 from firebase_config import get_company_token_and_env
 
 load_dotenv()
+
+# --- Logging Configuration ---
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # --- Configuration Defaults (from .env matches config.py names) ---
 # Default/Dev
@@ -43,8 +48,9 @@ def main(request):
 
     # --- 2. Input JSON validation ---
     request_json = request.get_json(silent=True)
+    logger.info(f"RECIBIDO MENSAJE {request_json}")
     if not request_json:
-        print("ERROR: No se recibió JSON válido")
+        logger.error("No se recibió JSON válido")
         return ({"error": "JSON body missing"}, 400, res_headers)
 
     # Validate required fields
@@ -56,7 +62,7 @@ def main(request):
         return ({"error": "Faltan campos obligatorios: 'action' u 'option'"}, 400, res_headers)
 
     if not company_id:
-        print("ALERTA: Falta company_id")
+        logger.warning("Falta company_id")
         return ({"error": "Se requiere 'company_id'"}, 400, res_headers)
 
     # --- 3. Token handling via Firestore company configuration ---
@@ -72,19 +78,12 @@ def main(request):
         # If is_test is True, we use the dev API base (API_BASE), otherwise production (API_BASE_PROD).
         if is_test:
             api_base = ENV_API_BASE
-            print(f"[FLOW-ZOA] company_id={company_id} -> TEST env, api_base={api_base}", flush=True)
         else:
             api_base = ENV_API_BASE_PROD
-            print(f"[FLOW-ZOA] company_id={company_id} -> PROD env, api_base={api_base}", flush=True)
     else:
         # Fallback to static config for backwards compatibility.
-        print(
-            f"[FLOW-ZOA] company_id={company_id} -> NO Firestore doc, using FALLBACK (ENV_TOKEN/ENV_API_BASE)",
-            flush=True,
-        )
         token = ENV_TOKEN
         api_base = ENV_API_BASE
-        print(f"[FLOW-ZOA] fallback api_base={api_base}", flush=True)
 
     # --- 4. Action routing (client assignment) ---
     client = None
@@ -162,7 +161,7 @@ def main(request):
         return (result, status, res_headers)
 
     except Exception as e:
-        print(f"ERROR CRÍTICO EN MAIN: {str(e)}")
+        logger.exception("ERROR CRÍTICO EN MAIN")
         return ({
             "error": "Internal Server Error",
             "details": str(e)

@@ -58,32 +58,24 @@ class ZoaCard:
         c_type_lower = str(card_type).lower()
         p_type = "management" if c_type_lower == "task" else "sales"
         
-        print(f"DEBUG: Intentando llamar a ZOA API. Tipo: {p_type}")
-        
         try:
             url = f"{self.api_base}/pipelines/pipelines?type={p_type}"
             # Lower timeout so the container doesn't hang
             response = requests.get(url, headers=self.headers, timeout=5)
             
-            print(f"DEBUG: Respuesta recibida. Status Code: {response.status_code}")
-            
             if response.status_code != 200:
-                print(f"DEBUG: Error en API. Texto: {response.text[:100]}")
                 return None, None
             
             res_json = response.json()
             data = res_json.get('data', [])
-            print(f"DEBUG: Cantidad de pipelines encontrados: {len(data)}")
 
             if not data:
                 # If management fails, try 'task' as fallback
-                print("DEBUG: Lista vacía. Reintentando con tipo 'task'...")
                 url_alt = f"{self.api_base}/pipelines/pipelines?type=task"
                 response = requests.get(url_alt, headers=self.headers, timeout=5)
                 data = response.json().get('data', [])
             
             if not data:
-                print("DEBUG: Sigue sin haber datos. Abortando.")
                 return None, None
 
             # 1. Pipeline
@@ -93,7 +85,6 @@ class ZoaCard:
             
             if not pipeline:
                 pipeline = data[0]
-                print(f"DEBUG: Seleccionado pipeline por defecto: {pipeline.get('name')}")
 
             # 2. Stage
             stages = pipeline.get('stages', [])
@@ -110,15 +101,12 @@ class ZoaCard:
             
             if not stage_obj and stages:
                 stage_obj = stages[0]
-                print(f"DEBUG: Usando primera columna como fallback")
 
             return pipeline.get('id'), stage_obj.get('id') if stage_obj else None
             
         except requests.exceptions.Timeout:
-            print("ERROR: La API de ZOA tardó demasiado en responder (Timeout)")
             return None, None
         except Exception as e:
-            print(f"ERROR inesperado en _get_context_ids: {str(e)}")
             return None, None
 
     def list_by_contact(self, contact_id):
@@ -139,7 +127,7 @@ class ZoaCard:
                 if response.status_code == 200:
                     return response.json(), 200
             except Exception as e:
-                print(f"Error buscando por título: {e}")
+                pass
 
         if any(request_json.get(k) for k in ["phone", "email", "nif", "mobile"]):
             c_res, c_status = self.contact_manager.search(request_json)

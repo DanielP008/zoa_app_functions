@@ -29,7 +29,6 @@ class ZoaNote:
         if request_json.get("contact_id"):
             return request_json.get("contact_id")
 
-        print("DEBUG (Notes): Resolviendo contact_id desde contacts.py...")
         # Call the search method from contacts.py
         c_res, c_status = self.contact_manager.search(request_json)
         
@@ -55,7 +54,6 @@ class ZoaNote:
         url = f"{self.api_base}/pipelines/notes/contact/{contact_id}"
         
         try:
-            print(f"DEBUG: Consultando notas para contacto {contact_id}")
             response = requests.get(url, headers=self.headers)
             return response.json(), response.status_code
         except Exception as e:
@@ -86,7 +84,6 @@ class ZoaNote:
         if not user_id:
             manager_name = request_json.get("manager_name") or request_json.get("user_name")
             if manager_name:
-                print(f"DEBUG: Buscando ID para el manager/user: {manager_name}")
                 u_res, u_status = self.user_manager.search({"name": manager_name})
                 if u_status == 200:
                     # API usually returns a list or object under 'data'
@@ -108,7 +105,6 @@ class ZoaNote:
         }
 
         try:
-            print(f"DEBUG: Creando nota. Contact:{contact_id} | Card:{card_id} | User:{user_id}")
             response = requests.post(url, headers=self.headers, json=payload)
             return response.json(), response.status_code
         except Exception as e:
@@ -129,8 +125,6 @@ class ZoaNote:
         target_date = request_json.get("date")
         old_content = request_json.get("old_content")
         note_id = None
-
-        print(f"DEBUG: Buscando nota para fecha {target_date} entre {len(notes_list)} notas")
 
         # 3. Match the note (avoid IndexError)
         for note in notes_list:
@@ -170,7 +164,6 @@ class ZoaNote:
         clean_payload = {k: v for k, v in payload.items() if v is not None}
 
         try:
-            print(f"DEBUG: Enviando PATCH a {url_patch}")
             response = requests.patch(url_patch, headers=self.headers, json=clean_payload)
             return response.json(), response.status_code
         except Exception as e:

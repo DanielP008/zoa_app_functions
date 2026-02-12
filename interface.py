@@ -602,5 +602,3 @@ if __name__ == "__main__":
         option="search", 
         request_data={"phone": "123456789"}
     )
-    print(f"Status: {status}")
-    print(f"Result: {result}")

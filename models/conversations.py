@@ -1,5 +1,8 @@
 import requests
+import logging
 from models.users import ZoaUser
+
+logger = logging.getLogger(__name__)
 
 class ZoaConversation:
     def __init__(self, token=None, api_base=None):
@@ -30,11 +33,9 @@ class ZoaConversation:
         
         try:
             while url:
-                print(f"DEBUG: Consultando página de templates en {url}")
                 response = requests.get(url, headers=self.headers, params=params, timeout=15)
                 
                 if response.status_code != 200:
-                    print(f"DEBUG: Error API ZOA ({response.status_code}): {response.text}")
                     break
 
                 res_json = response.json()
@@ -44,7 +45,6 @@ class ZoaConversation:
                 for t in templates:
                     if str(t.get("name")).strip().lower() == str(template_name).strip().lower():
                         t_id = t.get("id")
-                        print(f"DEBUG: ¡Template encontrado en esta página! ID: {t_id}")
                         return t_id
                 
                 # --- LÓGICA DE PAGINACIÓN ---
@@ -64,11 +64,9 @@ class ZoaConversation:
                     # No more pages
                     url = None
 
-            print(f"DEBUG: Se recorrieron todas las páginas y no se encontró '{template_name}'")
             return None
 
         except Exception as e:
-            print(f"DEBUG: Error grave en búsqueda paginada: {str(e)}")
             return None
     def _get_conversation_id(self, request_json):
         """Genera el ID exacto: {company_id}_{phone_sin_mas}"""
@@ -217,12 +215,9 @@ class ZoaConversation:
             base_url = self.api_base.rstrip('/')
             url_post = f"{base_url}{endpoint}"
             
-            print(f"DEBUG: Enviando POST a {url_post}")
+            logger.info(f"ENVIANDO MENSAJE A WHATSAPP {final_payload}")
             response = requests.post(url_post, headers=self.headers, json=final_payload, timeout=15)
             
-            if response.status_code == 422:
-                print(f"ERROR 422 ZOA: {response.text}")
-
             return response.json() if response.text else {"status": "ok"}, response.status_code
 
         except Exception as e:
@@ -283,12 +278,9 @@ class ZoaConversation:
         if not conv_id:
             return {"error": "No se pudo determinar el conversation_id"}, 404
 
-        # 3. Request to endpoint (PATCH preferred)
         try:
             url_status = f"{self.api_base}/waba/conversations/{conv_id}/sales-status"
             payload = {"sales_status": new_status}
-            
-            print(f"DEBUG: Enviando PATCH a {url_status}")
             
             # Usamos PATCH directamente ya que confirmaste que funciona
             response = requests.patch(url_status, headers=self.headers, json=payload)
@@ -322,8 +314,6 @@ class ZoaConversation:
         # Inject ID into JSON so child logic doesn't look it up again
         request_json["conversation_id"] = conv_id
         
-        print(f"DEBUG: Iniciando proceso dual para {conv_id}")
-
         # 2. Execute assignment
         # If manager_name is "", assign already handles user_id: null
         a_res, a_code = self.assign(request_json)
