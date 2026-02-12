@@ -32,7 +32,7 @@ class ZoaReadAll:
                         for stage in pipe.get('stages', []):
                             stage_map[stage.get('id')] = stage.get('title') or stage.get('name')
         except Exception as e:
-            print(f"Error mapeando etapas: {e}")
+            pass
         return stage_map
 
     def search(self, request_json):
@@ -103,5 +103,4 @@ class ZoaReadAll:
             }, 200
 
         except Exception as e:
-            print(f"DEBUG ERROR: {traceback.format_exc()}")
             return {"error": str(e)}, 500

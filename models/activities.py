@@ -23,9 +23,7 @@ class ZoaActivity:
         Searches for a contact's activities.
         """
         # 1. Resolve contact ID using flexible logic (object or list)
-        print("--- INICIANDO LÓGICA DE ACTIVIDADES ---")
         contact_id = None
-        print(f"DEBUG: Buscando contacto con payload: {request_json}")
         
         if any(request_json.get(k) for k in ["phone", "email", "nif", "mobile"]):
             c_res, c_status = self.contact_manager.search(request_json)
@@ -39,8 +37,6 @@ class ZoaActivity:
                 # Case B: It's a direct object
                 elif isinstance(data_content, dict):
                     contact_id = data_content.get("id")
-                
-                print(f"DEBUG: ID de contacto obtenido: {contact_id}")
 
         if not contact_id:
             return {"error": "No se encontró el contacto para recuperar sus actividades"}, 404
@@ -48,7 +44,6 @@ class ZoaActivity:
         # 2. GET call to ZOA: /pipelines/activities/contact/{contact_id}
         try:
             url = f"{self.api_base}/pipelines/activities/contact/{contact_id}"
-            print(f"DEBUG: Realizando GET a ZOA Activities: {url}")
             
             response = requests.get(url, headers=self.headers)
             
@@ -145,7 +140,6 @@ class ZoaActivity:
 
         try:
             url = f"{self.api_base}/pipelines/activities"
-            print(f"DEBUG: Enviando creación de actividad a ZOA para Contacto {contact_id}")
             response = requests.post(url, headers=self.headers, json=final_payload)
             return response.json(), response.status_code
         except Exception as e:
@@ -158,7 +152,6 @@ class ZoaActivity:
         
         # 1. Locate activity if ID was not sent directly
         if not activity_id and target_title:
-            print(f"DEBUG: Buscando actividad con título: {target_title}")
             
             # ATTEMPT A: By contact if phone/email present
             if any(request_json.get(k) for k in ["phone", "email", "nif"]):
@@ -171,7 +164,6 @@ class ZoaActivity:
 
             # ATTEMPT B: General search by title (if Attempt A failed or no phone)
             if not activity_id:
-                print("DEBUG: Buscando por título de forma general en el tenant...")
                 try:
                     # Consultamos el endpoint general de actividades
                     response = requests.get(f"{self.api_base}/pipelines/activities", headers=self.headers)
@@ -181,9 +173,8 @@ class ZoaActivity:
                         found = next((a for a in all_activities if a.get("title") == target_title), None)
                         if found:
                             activity_id = found.get("id")
-                            print(f"DEBUG: Actividad encontrada por título general: {activity_id}")
                 except Exception as e:
-                    print(f"Error en búsqueda general: {str(e)}")
+                    pass
         
         if not activity_id:
             return {"error": f"No se pudo localizar ninguna actividad con el título '{target_title}'"}, 404
@@ -215,7 +206,6 @@ class ZoaActivity:
         # 4. Execute PATCH
         try:
             url = f"{self.api_base}/pipelines/activities/{activity_id}"
-            print(f"DEBUG: Realizando PATCH a ZOA en: {url}")
             response = requests.patch(url, headers=self.headers, json=patch_payload)
             return response.json(), response.status_code
         except Exception as e:

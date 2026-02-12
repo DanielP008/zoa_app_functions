@@ -20,7 +20,6 @@ class ZoaTags:
         url = f"{self.api_base}/pipelines/tags"
         
         try:
-            print(f"DEBUG: Consultando etiquetas en {url}")
             response = requests.get(url, headers=self.headers)
             
             # Return json and status code for main.py to handle
@@ -45,7 +44,6 @@ class ZoaTags:
             return {"error": "El nombre es obligatorio"}, 400
 
         try:
-            print(f"DEBUG: Creando etiqueta '{payload['name']}' con tipo '{payload['type']}'")
             response = requests.post(url, headers=self.headers, json=payload)
             return response.json(), response.status_code
         except Exception as e:
