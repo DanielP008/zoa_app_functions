@@ -1,6 +1,10 @@
 # Usar imagen base de Python
 FROM python:3.11-slim
 
+# Set timezone to Spain
+ENV TZ=Europe/Madrid
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
 # Establecer directorio de trabajo
 WORKDIR /app
 

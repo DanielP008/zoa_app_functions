@@ -1,6 +1,6 @@
-from tarfile import data_filter
 import firebase_admin
 from firebase_admin import firestore
+from datetime import datetime
 
 class ZoaScheduler:
     def __init__(self, token=None, api_base=None):
@@ -21,22 +21,50 @@ class ZoaScheduler:
             
             if option != "search":
                 return {"error": "Opción no soportada"}, 400
+            if not company_id:
+                return {"error": "Se requiere 'company_id'"}, 400
 
             db = firestore.client()
             
-            # Look up document in waba_accounts where doc ID is company_id
-            doc_ref = db.collection(u'clientIDs').where("ids", "array_contains", company_id).get()
+            docs = (
+                db.collection(u'clientIDs')
+                .where(filter=firestore.FieldFilter("ids", "array_contains", company_id))
+                .get()
+            )
 
-            if not doc_ref.exists:
+            if not docs:
                 return {"error": f"Cuenta {company_id} no encontrada en Firebase"}, 404
 
-            data = doc_ref.to_dict()
+            data = docs[0].to_dict() or {}
+            domains = data.get('domains') or []
 
-            scheduler = data.get('scheduler', {})
+            target_domain = next((d for d in domains if d.get('phone_id') == company_id), None)
+            
+            if not target_domain and domains:
+                target_domain = domains[0]
+
+            scheduler_config = (target_domain or {}).get('scheduler') or data.get('scheduler', {})
+            
+            morning = scheduler_config.get('morning')
+            afternoon = scheduler_config.get('afternoon')
+
+            now_time = datetime.now().time()
+
+            def is_now_in_range(time_range_str):
+                if not time_range_str or " - " not in time_range_str:
+                    return False
+                try:
+                    start_str, end_str = time_range_str.split(" - ")
+                    start_time = datetime.strptime(start_str.strip(), "%H:%M").time()
+                    end_time = datetime.strptime(end_str.strip(), "%H:%M").time()
+                    return start_time <= now_time <= end_time
+                except Exception:
+                    return False
+
+            is_open = is_now_in_range(morning) or is_now_in_range(afternoon)
             
             return {
-                "morning": scheduler.get('morning', "No definido"),
-                "afternoon": scheduler.get('afternoon', "No definido")
+                "is_open": is_open,
             }, 200
 
         except Exception as e:
