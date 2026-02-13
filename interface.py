@@ -462,6 +462,17 @@ class ConversationsInterface(ZoaBaseInterface):
         self.client = ZoaConversation(self.token)
         self.action_name = "conversations"
 
+    def search(self, request_data):
+        """
+        Retrieve a WABA message by its wamid.
+        
+        Args:
+            request_data (dict):
+                - wamid (str, required): WhatsApp message ID.
+                - company_id (str, required): Company identifier.
+        """
+        return self.client.search(request_data)
+
     def send(self, request_data):
         """
         Send a WhatsApp message.

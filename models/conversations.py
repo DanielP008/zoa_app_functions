@@ -1,5 +1,6 @@
 import requests
 import logging
+import base64
 from models.users import ZoaUser
 
 logger = logging.getLogger(__name__)
@@ -81,6 +82,66 @@ class ZoaConversation:
         if company_id and phone:
             return f"{company_id}_{phone}"
         return None
+
+    def search(self, request_json):
+        """
+        Retrieve a WABA message by its wamid.
+
+        Args:
+            request_json (dict):
+                - wamid (str, required): The WhatsApp message ID to look up.
+                - company_id (str, required): Company identifier (sent as header).
+
+        Returns:
+            tuple: (response_dict, status_code)
+        """
+        wamid = request_json.get("wamid")
+        company_id = request_json.get("company_id")
+
+        if not wamid:
+            return {"error": "Se requiere 'wamid'"}, 400
+
+        if not company_id:
+            return {"error": "Se requiere 'company_id'"}, 400
+
+        # Build the request URL
+        base = self.api_base.rstrip("/")
+        url = f"{base}/waba/messages/{wamid}"
+
+        # Include company_id in headers alongside the existing API key
+        req_headers = {
+            **self.headers,
+            "company_id": str(company_id)
+        }
+
+        try:
+            response = requests.get(url, headers=req_headers, timeout=15)
+
+            if response.text:
+                res_data = response.json()
+                
+                # Check if there is a media_url to download and encode to base64
+                media_url = res_data.get("media_url")
+                if media_url:
+                    try:
+                        media_res = requests.get(media_url, timeout=30)
+                        media_res.raise_for_status()
+                        encoded_string = base64.b64encode(media_res.content).decode('utf-8')
+                        res_data["base64"] = encoded_string
+                    except Exception as media_err:
+                        logger.error(f"[WABA_MSG] Error downloading media from {media_url}: {str(media_err)}")
+                        # We still return the original data even if media download fails
+                
+                return res_data, response.status_code
+            else:
+                return {"status": "empty_response"}, response.status_code
+
+        except requests.exceptions.Timeout:
+            return {"error": "Timeout al consultar mensaje WABA"}, 504
+        except requests.exceptions.RequestException as e:
+            return {"error": f"Error de red: {str(e)}"}, 500
+        except Exception as e:
+            return {"error": f"Error inesperado: {str(e)}"}, 500
 
     def send(self, request_json):
         """Orchestrates message sending, transforming the request to ZOA's final format."""

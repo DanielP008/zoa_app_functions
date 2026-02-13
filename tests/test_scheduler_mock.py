@@ -7,7 +7,7 @@ class TestScheduler:
     """Integration tests for the scheduler endpoint against the running service."""
 
     # Company ID with scheduler config in Firestore (waba_accounts)
-    SCHEDULER_COMPANY_ID = "9827699917317289"
+    SCHEDULER_COMPANY_ID = "521783407682043"
 
     def test_search_scheduler(self, api_config, headers):
         """Test scheduler search returns is_open status."""
