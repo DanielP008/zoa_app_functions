@@ -117,18 +117,17 @@ class ZoaContact:
         """
         manager_name = request_json.get("manager_name")
         resolved_manager_id = None
+        resolved_office_ids = []
 
         if manager_name:
             u_res, u_status = self.user_manager.search({"name": manager_name})
-            
+
             if u_status == 200:
-                if isinstance(u_res, list) and len(u_res) > 0:
-                    resolved_manager_id = u_res[0].get("id")
-                elif isinstance(u_res, dict):
-                    # ZOA sometimes returns the object under a 'data' key
-                    resolved_manager_id = u_res.get("id") or u_res.get("data", {}).get("id")
-            else:
-                pass
+                u_data = u_res.get("data", u_res)
+                user_obj = u_data[0] if isinstance(u_data, list) and u_data else u_data if isinstance(u_data, dict) else {}
+                resolved_manager_id = user_obj.get("id")
+                office_default = user_obj.get("office_default")
+                resolved_office_ids = [office_default] if office_default else []
 
         # 2. Build final payload for ZOA
         data = {
@@ -138,9 +137,9 @@ class ZoaContact:
             "nif": request_json.get("nif", ""),
             "mobile": request_json.get("mobile") or request_json.get("phone", ""),
             "contact_type": request_json.get("contact_type", "particular"),
-            "gender": request_json.get("gender", ""),
-            "office_ids": request_json.get("office_ids", []),
-            "manager_id": resolved_manager_id  # Resolved manager ID
+            "gender": request_json.get("gender", "Hombre"),
+            "office_ids": request_json.get("office_ids") or resolved_office_ids,
+            "manager_id": resolved_manager_id
         }
 
         # 3. Final request to ZOA
