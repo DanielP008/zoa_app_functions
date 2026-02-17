@@ -105,10 +105,13 @@ class ZoaCardAct:
         
         try:
             url = f"{self.api_base}/pipelines/pipelines?type={p_type}"
+            logger.info(f"[_get_context_ids] GET {url}")
             # Lower timeout so the container doesn't hang
             response = requests.get(url, headers=self.headers, timeout=5)
-            
+            logger.info(f"[_get_context_ids] Status: {response.status_code}")
+
             if response.status_code != 200:
+                logger.error(f"[_get_context_ids] API error: {response.text[:200]}")
                 return None, None
             
             res_json = response.json()
@@ -150,8 +153,10 @@ class ZoaCardAct:
             return pipeline.get('id'), stage_obj.get('id') if stage_obj else None
             
         except requests.exceptions.Timeout:
+            logger.error("[_get_context_ids] TIMEOUT en la API de ZOA")
             return None, None
         except Exception as e:
+            logger.error(f"[_get_context_ids] Exception: {e}")
             return None, None
 
 
@@ -219,7 +224,11 @@ class ZoaCardAct:
 
             p_id, s_id = self._get_context_ids(pipeline_name, stage_name, c_type)
             
-            if not s_id: return {"error": f"No se pudo determinar la etapa para {c_type}"}, 404
+            if not s_id:
+                logger.error(f"[create] FALLO: s_id es None. pipeline_name={pipeline_name}, stage_name={stage_name}, api_base={self.api_base}")
+                return {"error": f"No se pudo determinar la etapa para {c_type}"}, 404
+
+            logger.info(f"[create] OK: p_id={p_id}, s_id={s_id}")
 
             # Resolve Manager ID
             resolved_manager_id = self._resolve_user_id_by_name(request_json.get("manager_name"))
@@ -230,7 +239,9 @@ class ZoaCardAct:
                 data_c = c_res["data"]
                 contact_id = data_c[0].get("id") if isinstance(data_c, list) and data_c else data_c.get("id")
 
-            if not contact_id: return {"error": "Contacto no identificado"}, 404
+            if not contact_id:
+                logger.error(f"[create] FALLO: contact_id es None. c_status={c_status}, c_res={str(c_res)[:200]}")
+                return {"error": "Contacto no identificado"}, 404
 
             # Resolve tags: if they don't exist, create them automatically
             tag_ids = self._resolve_tag_ids(request_json.get("tags_name"), create_missing=True)
