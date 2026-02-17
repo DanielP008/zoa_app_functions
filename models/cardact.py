@@ -3,6 +3,7 @@ from datetime import datetime
 from models.contacts import ZoaContact
 from models.users import ZoaUser
 from models.tags import ZoaTags
+import logging
 
 class ZoaCardAct:
     def __init__(self, token=None, api_base=None):
@@ -242,6 +243,8 @@ class ZoaCardAct:
                 "description": request_json.get("description"),
                 "manager_id": resolved_manager_id  # <--- Corregido
             }
+            
+            logger.info("[DEBUG] card_payload:", card_payload)
             
             response_card = requests.post(f"{self.api_base}/pipelines/cards", headers=self.headers, json=card_payload)
             res_card_json = response_card.json()
