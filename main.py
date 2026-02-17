@@ -125,6 +125,9 @@ def main(request):
             case "scheduler":
                 from models.scheduler import ZoaScheduler
                 client = ZoaScheduler(token, api_base)
+            case "ai_chat":
+                from models.ai_chat import ZoaAIChat
+                client = ZoaAIChat(token, api_base)
             case _:
                 return ({"error": f"Acción '{action}' no reconocida"}, 404, res_headers)
 

@@ -20,6 +20,7 @@ from models.email_module import ZoaEmail
 from models.conversations import ZoaConversation
 from models.notes import ZoaNote
 from models.scheduler import ZoaScheduler
+from models.ai_chat import ZoaAIChat
 
 class ZoaBaseInterface:
     """Base class that handles common validation and dispatch logic."""
@@ -601,6 +602,29 @@ class SchedulerInterface(ZoaBaseInterface):
                 - company_id (str, required): Inherited from execute().
         """
         return self.client.search(request_data)
+
+
+class AIChatInterface(ZoaBaseInterface):
+    """
+    Interface for AI Chat Assistant operations.
+    """
+    def __init__(self, token=None):
+        super().__init__(token)
+        self.client = ZoaAIChat(self.token)
+        self.action_name = "ai_chat"
+
+    def send(self, request_data):
+        """
+        Send a message to the AI chat assistant.
+        
+        Args:
+            request_data (dict):
+                - user_id (str, required): The user ID for the chat session.
+                - body (dict, required): The message body. Must be a dict with 'data' key.
+                  Format: {"data": "your message text"}
+                - body_type (str, optional): Type of body content (default: 'text').
+        """
+        return self.client.send(request_data)
 
 
 # Usage example
