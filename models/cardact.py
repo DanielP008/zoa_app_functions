@@ -5,6 +5,9 @@ from models.users import ZoaUser
 from models.tags import ZoaTags
 import logging
 
+logger = logging.getLogger(__name__)
+
+
 class ZoaCardAct:
     def __init__(self, token=None, api_base=None):
         import os
@@ -244,7 +247,7 @@ class ZoaCardAct:
                 "manager_id": resolved_manager_id  # <--- Corregido
             }
             
-            logger.info("[DEBUG] card_payload:", card_payload)
+            logger.info(f"[DEBUG] card_payload: {card_payload}")
             
             response_card = requests.post(f"{self.api_base}/pipelines/cards", headers=self.headers, json=card_payload)
             res_card_json = response_card.json()
