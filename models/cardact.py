@@ -240,8 +240,31 @@ class ZoaCardAct:
                 contact_id = data_c[0].get("id") if isinstance(data_c, list) and data_c else data_c.get("id")
 
             if not contact_id:
-                logger.error(f"[create] FALLO: contact_id es None. c_status={c_status}, c_res={str(c_res)[:200]}")
-                return {"error": "Contacto no identificado"}, 404
+                # Auto-create contact if not found
+                phone = request_json.get("phone") or request_json.get("mobile")
+                email = request_json.get("email")
+                contact_name = request_json.get("contact_name") or request_json.get("name") or phone or email
+
+                if not contact_name:
+                    logger.error("[create] FALLO: No hay datos suficientes para crear contacto")
+                    return {"error": "Contacto no identificado y sin datos para crearlo"}, 404
+
+                create_contact_payload = {
+                    "name": contact_name,
+                    "mobile": phone or "",
+                    "email": email or "",
+                    "manager_name": request_json.get("manager_name"),
+                }
+                logger.info(f"[create] Contacto no encontrado, creando: {create_contact_payload}")
+
+                cc_res, cc_status = self.contact_manager.create(create_contact_payload)
+                if cc_status in (200, 201):
+                    cc_data = cc_res.get("data", cc_res)
+                    contact_id = cc_data[0].get("id") if isinstance(cc_data, list) and cc_data else cc_data.get("id") if isinstance(cc_data, dict) else None
+
+                if not contact_id:
+                    logger.error(f"[create] FALLO: No se pudo crear contacto. cc_status={cc_status}, cc_res={str(cc_res)[:200]}")
+                    return {"error": "No se pudo crear el contacto"}, 500
 
             # Resolve tags: if they don't exist, create them automatically
             tag_ids = self._resolve_tag_ids(request_json.get("tags_name"), create_missing=True)
