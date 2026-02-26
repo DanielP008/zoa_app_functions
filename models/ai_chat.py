@@ -1,13 +1,10 @@
 import requests
 import json
-import logging
+import os
 
-logger = logging.getLogger(__name__)
 
 class ZoaAIChat:
     def __init__(self, token=None, api_base=None):
-        import os
-        # Use env vars directly (Global configuration)
         self.token = str(token or os.getenv("TOKEN")).strip()
         self.api_base = api_base or os.getenv("API_BASE")
         self.headers = {
@@ -15,100 +12,136 @@ class ZoaAIChat:
             "Accept": "application/json",
             "apiKey": self.token
         }
-        logger.info(f"[AI_CHAT] Initialized ZoaAIChat with api_base={self.api_base}, token={'*' * 4}{self.token[-6:]}")
 
+    def _post_to_ai_chat(self, payload):
+        """Common POST to the AI chat endpoint."""
+        base = self.api_base.rstrip("/")
+        url = f"{base}/pipelines/assistant-chat/ai"
+
+        try:
+            print(f"[AI_CHAT] POST {url}", flush=True)
+            response = requests.post(url, headers=self.headers, json=payload, timeout=30)
+
+            try:
+                response_data = response.json()
+            except Exception:
+                response_data = {"response": response.text}
+
+            return response_data, response.status_code
+
+        except requests.exceptions.Timeout:
+            return {"error": "Request timeout al enviar mensaje al asistente AI"}, 504
+        except Exception as e:
+            return {"error": str(e)}, 500
+
+    # ------------------------------------------------------------------
+    # option = "send"  ->  text / button messages
+    # ------------------------------------------------------------------
     def send(self, request_json):
         """
-        Send a message to the AI chat assistant.
+        Send a text or button message to the AI chat.
 
-        Args:
-            request_json (dict):
-                - body (dict, required): The message body with 'data' key. Format: {"data": "message text"}
-                - body_type (str, optional): Type of body content (default: 'text').
-                - user_id (str, required): The user ID for the chat session.
-                - company_id (str): Used for routing in main.py, excluded from API payload.
-
-        Returns:
-            tuple: (response_dict, status_code)
+        Expected fields:
+        - user_id (required)
+        - body_type: "text" or "button"
+        - body: {"data": "message"} for text, {"data": {"title": "..."}} for button
         """
-        logger.info(f"[AI_CHAT] ====== START ai_chat.send() ======")
-        logger.info(f"[AI_CHAT] Raw request_json received: {json.dumps(request_json, ensure_ascii=False, default=str)}")
-
-        # 1. Validate required fields
         user_id = request_json.get("user_id")
-        logger.info(f"[AI_CHAT] Extracted user_id: {user_id}")
         if not user_id:
-            logger.info(f"[AI_CHAT] VALIDATION FAILED: user_id is missing or empty")
             return {"error": "El campo 'user_id' es obligatorio."}, 400
 
         body = request_json.get("body")
-        logger.info(f"[AI_CHAT] Extracted body: {body}")
-        logger.info(f"[AI_CHAT] Body type (python): {type(body).__name__}")
-        if not body:
-            logger.info(f"[AI_CHAT] VALIDATION FAILED: body is missing or empty")
-            return {"error": "El campo 'body' es obligatorio."}, 400
+        if not body or not isinstance(body, dict) or "data" not in body:
+            return {"error": "El campo 'body' debe ser un dict con clave 'data'."}, 400
 
-        # 2. Validate body format - must be a dict with 'data' key
-        if not isinstance(body, dict) or "data" not in body:
-            logger.info(f"[AI_CHAT] VALIDATION FAILED: body is not a dict with 'data' key. Got: {body}")
-            return {"error": "El campo 'body' debe ser un diccionario con la clave 'data'. Ejemplo: {'data': 'tu mensaje'}"}, 400
-
-        logger.info(f"[AI_CHAT] body['data'] content: {body['data']}")
-        logger.info(f"[AI_CHAT] All validations passed")
-
-        # 3. Prepare payload (exclude fields used only for routing)
         body_type = request_json.get("body_type", "text")
-        logger.info(f"[AI_CHAT] body_type: {body_type}")
 
-        # Only include the fields expected by the AI chat API
         payload = {
             "body_type": body_type,
             "body": body,
             "user_id": str(user_id)
         }
 
-        # 4. Build endpoint URL
-        base = self.api_base.rstrip('/')
-        url = f"{base}/pipelines/assistant-chat/ai"
+        return self._post_to_ai_chat(payload)
 
-        logger.info(f"[AI_CHAT] Target URL: {url}")
-        logger.info(f"[AI_CHAT] Request headers: Content-Type={self.headers['Content-Type']}, Accept={self.headers['Accept']}, apiKey=****{self.token[-6:]}")
-        logger.info(f"[AI_CHAT] Final payload being sent: {json.dumps(payload, ensure_ascii=False, default=str)}")
+    # ------------------------------------------------------------------
+    # option = "create"  ->  create a new tarificacion sheet
+    # ------------------------------------------------------------------
+    def create(self, request_json):
+        """
+        Create a new tarificacion sheet (auto_sheet / home_sheet).
 
-        try:
-            logger.info(f"[AI_CHAT] Sending POST request to ZOA API...")
-            response = requests.post(url, headers=self.headers, json=payload, timeout=30)
+        Expected fields:
+        - user_id (required)
+        - body_type: "auto_sheet" or "home_sheet" (required)
+        - call_id (required)
+        - complete: "true" / "false" (default "false")
+        - data: dict with the sheet data (vehiculo, tomador, etc.)
+        """
+        user_id = request_json.get("user_id")
+        body_type = request_json.get("body_type")
+        call_id = request_json.get("call_id")
 
-            logger.info(f"[AI_CHAT] Response HTTP status code: {response.status_code}")
-            logger.info(f"[AI_CHAT] Response headers: {dict(response.headers)}")
-            logger.info(f"[AI_CHAT] Response raw text: {response.text}")
+        if not user_id:
+            return {"error": "El campo 'user_id' es obligatorio."}, 400
+        if not body_type:
+            return {"error": "El campo 'body_type' es obligatorio (auto_sheet / home_sheet)."}, 400
+        if not call_id:
+            return {"error": "El campo 'call_id' es obligatorio."}, 400
 
-            # Try to parse JSON response
-            try:
-                response_data = response.json()
-                logger.info(f"[AI_CHAT] Response parsed as JSON: {json.dumps(response_data, ensure_ascii=False, default=str)}")
-            except Exception as parse_err:
-                response_data = {"response": response.text}
-                logger.info(f"[AI_CHAT] Response is NOT JSON, wrapping raw text. Parse error: {parse_err}")
+        complete_str = str(request_json.get("complete", "false")).lower()
+        sheet_data = request_json.get("data", {})
 
-            if response.status_code >= 400:
-                logger.info(f"[AI_CHAT] ZOA API returned error status {response.status_code}: {response_data}")
-            else:
-                logger.info(f"[AI_CHAT] SUCCESS - Message sent to AI chat. Status: {response.status_code}")
+        payload = {
+            "body_type": body_type,
+            "action": "create",
+            "call_id": call_id,
+            "user_id": str(user_id),
+            "complete": complete_str,
+            "body": {
+                "data": sheet_data
+            }
+        }
 
-            logger.info(f"[AI_CHAT] ====== END ai_chat.send() ======")
-            return response_data, response.status_code
+        return self._post_to_ai_chat(payload)
 
-        except requests.exceptions.Timeout:
-            logger.info(f"[AI_CHAT] ERROR: Request timed out after 30s to {url}")
-            logger.info(f"[AI_CHAT] ====== END ai_chat.send() (TIMEOUT) ======")
-            return {"error": "Request timeout al enviar mensaje al asistente AI"}, 504
-        except requests.exceptions.ConnectionError as conn_err:
-            logger.info(f"[AI_CHAT] ERROR: Connection failed to {url}. Details: {conn_err}")
-            logger.info(f"[AI_CHAT] ====== END ai_chat.send() (CONNECTION ERROR) ======")
-            return {"error": f"Error de conexión al asistente AI: {str(conn_err)}"}, 502
-        except Exception as e:
-            logger.info(f"[AI_CHAT] ERROR: Unexpected exception: {type(e).__name__}: {str(e)}")
-            logger.exception("[AI_CHAT] Full traceback:")
-            logger.info(f"[AI_CHAT] ====== END ai_chat.send() (EXCEPTION) ======")
-            return {"error": f"Error al enviar mensaje: {str(e)}"}, 500
+    # ------------------------------------------------------------------
+    # option = "update"  ->  update an existing tarificacion sheet
+    # ------------------------------------------------------------------
+    def update(self, request_json):
+        """
+        Update an existing tarificacion sheet (auto_sheet / home_sheet).
+
+        Expected fields:
+        - user_id (required)
+        - body_type: "auto_sheet" or "home_sheet" (required)
+        - call_id (required)
+        - complete: "true" / "false" (default "true")
+        - data: dict with the updated sheet data
+        """
+        user_id = request_json.get("user_id")
+        body_type = request_json.get("body_type")
+        call_id = request_json.get("call_id")
+
+        if not user_id:
+            return {"error": "El campo 'user_id' es obligatorio."}, 400
+        if not body_type:
+            return {"error": "El campo 'body_type' es obligatorio (auto_sheet / home_sheet)."}, 400
+        if not call_id:
+            return {"error": "El campo 'call_id' es obligatorio."}, 400
+
+        complete_str = str(request_json.get("complete", "true")).lower()
+        sheet_data = request_json.get("data", {})
+
+        payload = {
+            "body_type": body_type,
+            "action": "update",
+            "call_id": call_id,
+            "user_id": str(user_id),
+            "complete": complete_str,
+            "body": {
+                "data": sheet_data
+            }
+        }
+
+        return self._post_to_ai_chat(payload)
