@@ -17,39 +17,9 @@ class ZoaAIChat:
         """Common POST to the AI chat endpoint."""
         base = self.api_base.rstrip("/")
         url = f"{base}/pipelines/assistant-chat/ai"
-        
-        # --- UUID to ID Conversion ---
-        # If user_id is a UUID (contains hyphens), try to resolve the numeric ID
-        user_id = payload.get("user_id")
-        if user_id and isinstance(user_id, str) and "-" in user_id:
-            print(f"[AI_CHAT] UUID detected: {user_id}. Attempting to resolve numeric ID...", flush=True)
-            try:
-                # Use ZoaUser to fetch the user list and find the one with this UUID
-                from models.users import ZoaUser
-                user_client = ZoaUser(self.token, self.api_base)
-                users_res, status = user_client.search({})
-                
-                if status == 200 and isinstance(users_res, dict):
-                    users_list = users_res.get("data", [])
-                    # Find user where user_id (UUID) matches
-                    user_found = next((u for u in users_list if str(u.get("user_id")) == user_id), None)
-                    
-                    if user_found and user_found.get("id"):
-                        numeric_id = user_found.get("id")
-                        print(f"[AI_CHAT] Resolved UUID {user_id} to numeric ID {numeric_id}", flush=True)
-                        payload["user_id"] = str(numeric_id)
-                    else:
-                        # Fallback: check if the UUID is actually the 'id' field (unlikely but safe)
-                        user_found_by_id = next((u for u in users_list if str(u.get("id")) == user_id), None)
-                        if user_found_by_id:
-                             print(f"[AI_CHAT] UUID {user_id} matches 'id' field directly.", flush=True)
-                        else:
-                             print(f"[AI_CHAT] Could not find user with UUID {user_id} in users list.", flush=True)
-            except Exception as e:
-                print(f"[AI_CHAT] Error resolving UUID: {e}", flush=True)
 
         try:
-            print(f"[AI_CHAT] POST {url} | Payload user_id: {payload.get('user_id')}", flush=True)
+            print(f"[AI_CHAT] POST {url}", flush=True)
             response = requests.post(url, headers=self.headers, json=payload, timeout=30)
 
             try:
