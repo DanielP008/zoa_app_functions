@@ -272,16 +272,17 @@ class ZoaConversation:
 
         # --- EXECUTION ---
         try:
-            # Avoid double slashes in URL
             base_url = self.api_base.rstrip('/')
             url_post = f"{base_url}{endpoint}"
             
             logger.info(f"ENVIANDO MENSAJE A WHATSAPP {final_payload}")
             response = requests.post(url_post, headers=self.headers, json=final_payload, timeout=15)
             
-            return response.json() if response.text else {"status": "ok"}, response.status_code
+            result = response.json() if response.text else {"status": "ok"}
+            return result, response.status_code
 
         except Exception as e:
+            logger.error(f"[CONVERSATIONS] Error sending message: {e}")
             return {"error": f"Error de red en Flow: {str(e)}"}, 500
 
     def assign(self, request_json):
