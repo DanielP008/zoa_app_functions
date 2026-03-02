@@ -237,10 +237,11 @@ class ZoaConversation:
             # Priority 2: If no ID, search by name
             if not template_id:
                 template_name = request_json.get("template_name")
-                template_id = self._get_template_id_by_name(template_name, company_id)
+                if template_name:
+                    template_id = self._get_template_id_by_name(template_name, company_id)
             
             if not template_id:
-                return {"error": f"No se pudo determinar el ID del template (nombre: {request_json.get('template_name')})"}, 404
+                return {"error": f"No se pudo determinar el ID del template (se requiere 'template_id' o 'template_name')"}, 404
 
             # Construir data simplificada para evitar errores 502/422 en producción
             msg_data = {
