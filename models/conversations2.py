@@ -50,7 +50,7 @@ class ZoaConversation2:
         return None
 
     def send(self, request_json):
-        company_id = request_json.get("company_id") or request_json.get("phone_number_id") or request_json.get("location_id")
+        company_id = request_json.get("company_id") or request_json.get("phone_number_id")
         if not company_id:
             return {"error": "Falta company_id"}, 400
 
@@ -101,8 +101,6 @@ class ZoaConversation2:
                 template_name = request_json.get("template_name")
                 if template_name:
                     template_id = self._get_template_id_by_name(template_name, company_id)
-            if not template_id:
-                return {"error": "Se requiere 'template_id' o 'template_name' válido"}, 404
             final_payload = {
                 "to": str(request_json.get("to") or request_json.get("phone")).strip(),
                 "template_id": str(template_id),
@@ -131,10 +129,8 @@ class ZoaConversation2:
         if not conv_id:
             return {"error": "No se localizó el ID de la conversación"}, 404
 
-        # Prioridad 1: Usar manager_id directo si viene en el JSON
         user_id = request_json.get("manager_id")
         
-        # Prioridad 2: Buscar por nombre si no viene el ID
         if not user_id:
             manager_name = request_json.get("manager_name")
             if not manager_name:
@@ -161,8 +157,6 @@ class ZoaConversation2:
         try:
             url = f"{self.api_base}/waba/conversations/{conv_id}/sales-status"
             response = requests.patch(url, headers=self.headers, json={"sales_status": new_status})
-            if response.status_code == 405:
-                response = requests.post(url, headers=self.headers, json={"sales_status": new_status})
             if response.status_code in [200, 201, 204]:
                 return {"status": "success", "conversation_id": conv_id, "new_status": new_status}, 200
             return response.json() if response.text else {"status": "error"}, response.status_code
@@ -189,26 +183,6 @@ class ZoaConversation2:
             
             a_res, a_code = future_assign.result()
             s_res, s_code = future_status.result()
-
-        # 3. Evaluate results
-        if a_code not in [200, 201, 204] and s_code not in [200, 201, 204]:
-            return {"error": "Fallaron ambos procesos", "assign": a_res, "status": s_res}, a_code
-            
-        if a_code not in [200, 201, 204]:
-            return {
-                "status": "partial_success",
-                "message": "Se cambió el estado pero falló la asignación",
-                "assign_error": a_res,
-                "status_result": s_res
-            }, a_code
-
-        if s_code not in [200, 201, 204]:
-            return {
-                "status": "partial_success",
-                "message": "Asignado correctamente pero falló el cambio de estado",
-                "assign_result": a_res,
-                "status_error": s_res
-            }, s_code
 
         return {
             "status": "success",
