@@ -1,4 +1,5 @@
 import requests
+import concurrent.futures
 from models.users import ZoaUser
 
 class ZoaConversation2:
@@ -130,11 +131,20 @@ class ZoaConversation2:
         if not conv_id:
             return {"error": "No se localizó el ID de la conversación"}, 404
 
-        u_res, u_status = self.user_manager.search({"name": request_json.get("manager_name")})
-        if u_status != 200:
-            return {"error": f"No se encontró al usuario {request_json.get('manager_name')}"}, 404
-        u_data = u_res.get("data")
-        user_id = u_data[0].get("id") if isinstance(u_data, list) and u_data else u_data.get("id")
+        # Prioridad 1: Usar manager_id directo si viene en el JSON
+        user_id = request_json.get("manager_id")
+        
+        # Prioridad 2: Buscar por nombre si no viene el ID
+        if not user_id:
+            manager_name = request_json.get("manager_name")
+            if not manager_name:
+                return {"error": "Se requiere 'manager_id' o 'manager_name'"}, 400
+                
+            u_res, u_status = self.user_manager.search({"name": manager_name})
+            if u_status != 200:
+                return {"error": f"No se encontró al usuario {manager_name}"}, 404
+            u_data = u_res.get("data")
+            user_id = u_data[0].get("id") if isinstance(u_data, list) and u_data else u_data.get("id")
 
         try:
             response = requests.post(f"{self.api_base}/waba/conversations/{conv_id}/assign", headers=self.headers, json={"user_id": str(user_id)})
@@ -160,17 +170,51 @@ class ZoaConversation2:
             return {"error": str(e)}, 500
 
     def assign_status(self, request_json):
+        """
+        Dual flow: Assign user and change sales status in parallel.
+        Uses direct ID to avoid lookup latency.
+        """
+        # 1. Resolve conversation ID once
         conv_id = self._get_conversation_id(request_json)
         if not conv_id:
             return {"error": "No se pudo determinar el ID de la conversación"}, 400
+            
+        # Inject ID into JSON so child logic doesn't look it up again
         request_json["conversation_id"] = conv_id
+        
+        # 2. Execute assignment and status change in parallel
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+            future_assign = executor.submit(self.assign, request_json)
+            future_status = executor.submit(self.status, request_json)
+            
+            a_res, a_code = future_assign.result()
+            s_res, s_code = future_status.result()
 
-        a_res, a_code = self.assign(request_json)
+        # 3. Evaluate results
+        if a_code not in [200, 201, 204] and s_code not in [200, 201, 204]:
+            return {"error": "Fallaron ambos procesos", "assign": a_res, "status": s_res}, a_code
+            
         if a_code not in [200, 201, 204]:
-            return {"error": "Falló la asignación", "details": a_res}, a_code
+            return {
+                "status": "partial_success",
+                "message": "Se cambió el estado pero falló la asignación",
+                "assign_error": a_res,
+                "status_result": s_res
+            }, a_code
 
-        s_res, s_code = self.status(request_json)
         if s_code not in [200, 201, 204]:
-            return {"status": "partial_success", "assign_result": a_res, "status_error": s_res}, s_code
+            return {
+                "status": "partial_success",
+                "message": "Asignado correctamente pero falló el cambio de estado",
+                "assign_result": a_res,
+                "status_error": s_res
+            }, s_code
 
-        return {"status": "success", "conversation_id": conv_id, "results": {"assign": a_res, "status": s_res}}, 200
+        return {
+            "status": "success",
+            "conversation_id": conv_id,
+            "results": {
+                "assign": a_res,
+                "status": s_res
+            }
+        }, 200

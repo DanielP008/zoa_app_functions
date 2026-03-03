@@ -1,6 +1,7 @@
 import requests
 import logging
 import base64
+import concurrent.futures
 from models.users import ZoaUser
 
 logger = logging.getLogger(__name__)
@@ -303,16 +304,24 @@ class ZoaConversation:
         if not conv_id:
             return {"error": "No se localizó el ID de la conversación"}, 404
 
-        manager_name = request_json.get("manager_name")
-        u_res, u_status = self.user_manager.search({"name": manager_name})
-        if u_status != 200: return {"error": f"No se encontró al usuario {manager_name}"}, 404
+        # Prioridad 1: Usar manager_id directo si viene en el JSON
+        user_id = request_json.get("manager_id")
         
-        u_data = u_res.get("data")
-        resolved_user_id = u_data[0].get("id") if isinstance(u_data, list) and u_data else u_data.get("id")
+        # Prioridad 2: Buscar por nombre si no viene el ID
+        if not user_id:
+            manager_name = request_json.get("manager_name")
+            if not manager_name:
+                return {"error": "Se requiere 'manager_id' o 'manager_name'"}, 400
+                
+            u_res, u_status = self.user_manager.search({"name": manager_name})
+            if u_status != 200:
+                return {"error": f"No se encontró al usuario {manager_name}"}, 404
+            u_data = u_res.get("data")
+            user_id = u_data[0].get("id") if isinstance(u_data, list) and u_data else u_data.get("id")
         
         try:
             url_assign = f"{self.api_base}/waba/conversations/{conv_id}/assign"
-            payload = {"user_id": str(resolved_user_id)}
+            payload = {"user_id": str(user_id)}
             response = requests.post(url_assign, headers=self.headers, json=payload)
             return response.json() if response.text else {"status": "success"}, response.status_code
         except Exception as e: return {"error": str(e)}, 500
@@ -366,7 +375,7 @@ class ZoaConversation:
         
     def assign_status(self, request_json):
         """
-        Dual flow: Assign user and change sales status.
+        Dual flow: Assign user and change sales status in parallel.
         Uses direct ID to avoid lookup latency.
         """
         # 1. Resolve conversation ID once
@@ -377,17 +386,26 @@ class ZoaConversation:
         # Inject ID into JSON so child logic doesn't look it up again
         request_json["conversation_id"] = conv_id
         
-        # 2. Execute assignment
-        # If manager_name is "", assign already handles user_id: null
-        a_res, a_code = self.assign(request_json)
-        
-        # If assignment fails (and it's not "already assigned"), stop
-        if a_code not in [200, 201, 204]:
-            return {"error": "Falló la asignación", "details": a_res}, a_code
+        # 2. Execute assignment and status change in parallel
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+            future_assign = executor.submit(self.assign, request_json)
+            future_status = executor.submit(self.status, request_json)
+            
+            a_res, a_code = future_assign.result()
+            s_res, s_code = future_status.result()
 
-        # 3. Execute status change
-        s_res, s_code = self.status(request_json)
-        
+        # 3. Evaluate results
+        if a_code not in [200, 201, 204] and s_code not in [200, 201, 204]:
+            return {"error": "Fallaron ambos procesos", "assign": a_res, "status": s_res}, a_code
+            
+        if a_code not in [200, 201, 204]:
+            return {
+                "status": "partial_success",
+                "message": "Se cambió el estado pero falló la asignación",
+                "assign_error": a_res,
+                "status_result": s_res
+            }, a_code
+
         if s_code not in [200, 201, 204]:
             return {
                 "status": "partial_success",
