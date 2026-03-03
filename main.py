@@ -119,6 +119,9 @@ def main(request):
             case "conversations":
                 from models.conversations import ZoaConversation
                 client = ZoaConversation(token, api_base)
+            case "conversations2":
+                from models.conversations2 import ZoaConversation2
+                client = ZoaConversation2(token, api_base)
             case "notes":
                 from models.notes import ZoaNote
                 client = ZoaNote(token, api_base)

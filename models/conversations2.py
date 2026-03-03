@@ -1,7 +1,7 @@
 import requests
 from models.users import ZoaUser
 
-class ZoaConversation:
+class ZoaConversation2:
     def __init__(self, token=None, api_base=None):
         import os
         self.token = str(token or os.getenv("TOKEN")).strip()
