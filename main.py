@@ -131,6 +131,9 @@ def main(request):
             case "ai_chat":
                 from models.ai_chat import ZoaAIChat
                 client = ZoaAIChat(token, api_base)
+            case "insurance_agent":
+                from models.insurance_agent import ZoaInsuranceAgent
+                client = ZoaInsuranceAgent(token, api_base)
             case _:
                 return ({"error": f"Acción '{action}' no reconocida"}, 404, res_headers)
 
@@ -150,6 +153,8 @@ def main(request):
                 result, status = client.status(request_json)
             case "assign_status":
                 result, status = client.assign_status(request_json)
+            case "process":
+                result, status = client.process(request_json)
             case "get_template_id":
                 template_name = request_json.get("template_name")
                 if not template_name:

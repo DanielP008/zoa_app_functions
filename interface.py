@@ -21,6 +21,7 @@ from models.conversations import ZoaConversation
 from models.notes import ZoaNote
 from models.scheduler import ZoaScheduler
 from models.ai_chat import ZoaAIChat
+from models.insurance_agent import ZoaInsuranceAgent
 
 class ZoaBaseInterface:
     """Base class that handles common validation and dispatch logic."""
@@ -75,6 +76,8 @@ class ZoaBaseInterface:
                 return self.client.status(request_data)
             elif option == "assign_status":
                 return self.client.assign_status(request_data)
+            elif option == "process":
+                return self.client.process(request_data)
             else:
                 return {"error": f"La opción '{option}' no es válida para la acción '{self.action_name}'"}, 400
                 
@@ -625,6 +628,47 @@ class AIChatInterface(ZoaBaseInterface):
                 - body_type (str, optional): Type of body content (default: 'text').
         """
         return self.client.send(request_data)
+
+
+class InsuranceAgentInterface(ZoaBaseInterface):
+    """
+    Interface for the Insurance Tarification Agent.
+
+    Receives buffered call transcription messages and automatically classifies
+    them as relevant/irrelevant. For relevant messages, extracts insurance data
+    and creates or updates tarification sheets (auto_sheet / home_sheet) via
+    the AI Chat API.
+    """
+    def __init__(self, token=None):
+        super().__init__(token)
+        self.client = ZoaInsuranceAgent(self.token)
+        self.action_name = "insurance_agent"
+
+    def process(self, request_data):
+        """
+        Process a buffered transcription message through the insurance agent pipeline.
+
+        Pipeline: classify (relevant/irrelevant) → extract data → create/update sheet.
+
+        Args:
+            request_data (dict):
+                - user_id (str, required): User ID for the AI chat session.
+                - call_id (str, required): Identifier of the active call.
+                - message (str, required): Buffered/concatenated transcription text.
+                - memory (dict, optional): Current tarification state. Pass empty dict
+                  or null for a new session. The response includes an updated memory
+                  that should be passed back in subsequent calls.
+
+        Returns:
+            dict with:
+                - status: "created" | "updated" | "waiting" | "irrelevant"
+                - ramo: "AUTO" | "HOGAR" | null
+                - memory: Updated tarification state (pass back in next call).
+                - datos_detectados: List of fields extracted in this call.
+                - pendientes: List of required fields still missing.
+                - api_response: Response from the AI Chat API (only on create/update).
+        """
+        return self.client.process(request_data)
 
 
 # Usage example
