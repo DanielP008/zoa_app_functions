@@ -2,3 +2,4 @@ functions-framework>=3.0.0
 requests>=2.31.0
 firebase-admin
 python-dotenv
+openai>=1.0.0
