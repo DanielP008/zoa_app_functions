@@ -75,6 +75,10 @@ class ZoaBaseInterface:
                 return self.client.status(request_data)
             elif option == "assign_status":
                 return self.client.assign_status(request_data)
+            elif option == "delete":
+                return self.client.delete(request_data)
+            elif option == "list":
+                return self.client.list(request_data)
             else:
                 return {"error": f"La opción '{option}' no es válida para la acción '{self.action_name}'"}, 400
                 
@@ -92,6 +96,8 @@ class ContactsInterface(ZoaBaseInterface):
         super().__init__(token)
         self.client = ZoaContact(self.token)
         self.action_name = "contacts"
+        self.option = None
+        self.action = "contacts"
 
     def search(self, request_data):
         """
@@ -156,6 +162,8 @@ class UsersInterface(ZoaBaseInterface):
         super().__init__(token)
         self.client = ZoaUser(self.token)
         self.action_name = "users"
+        self.option = None
+        self.action = "users"
 
     def search(self, request_data):
         """
@@ -179,6 +187,8 @@ class CardsInterface(ZoaBaseInterface):
         super().__init__(token)
         self.client = ZoaCard(self.token)
         self.action_name = "cards"
+        self.option = None
+        self.action = "cards"
 
     def search(self, request_data):
         """
@@ -241,6 +251,8 @@ class CardActionsInterface(ZoaBaseInterface):
         super().__init__(token)
         self.client = ZoaCardAct(self.token)
         self.action_name = "cardact"
+        self.option = None
+        self.action = "cardact"
 
     def create(self, request_data):
         """
@@ -305,6 +317,8 @@ class ActivitiesInterface(ZoaBaseInterface):
         super().__init__(token)
         self.client = ZoaActivity(self.token)
         self.action_name = "activities"
+        self.option = None
+        self.action = "activities"
 
     def search(self, request_data):
         """
@@ -363,6 +377,8 @@ class DepartmentsInterface(ZoaBaseInterface):
         super().__init__(token)
         self.client = ZoaDepartment(self.token)
         self.action_name = "departments"
+        self.option = None
+        self.action = "departments"
 
     def search(self, request_data):
         """
@@ -384,6 +400,8 @@ class TagsInterface(ZoaBaseInterface):
         super().__init__(token)
         self.client = ZoaTags(self.token)
         self.action_name = "tags"
+        self.option = None
+        self.action = "tags"
 
     def search(self, request_data=None):
         """
@@ -415,6 +433,8 @@ class ReadAllInterface(ZoaBaseInterface):
         super().__init__(token)
         self.client = ZoaReadAll(self.token)
         self.action_name = "readall"
+        self.option = None
+        self.action = "readall"
 
     def search(self, request_data):
         """
@@ -436,6 +456,8 @@ class EmailInterface(ZoaBaseInterface):
         super().__init__(token)
         self.client = ZoaEmail(self.token)
         self.action_name = "email_module"
+        self.option = None
+        self.action = "email_module"
 
     def send(self, request_data):
         """
@@ -462,6 +484,8 @@ class ConversationsInterface(ZoaBaseInterface):
         super().__init__(token)
         self.client = ZoaConversation(self.token)
         self.action_name = "conversations"
+        self.option = None
+        self.action = "conversations"
 
     def search(self, request_data):
         """
@@ -540,6 +564,8 @@ class NotesInterface(ZoaBaseInterface):
         super().__init__(token)
         self.client = ZoaNote(self.token)
         self.action_name = "notes"
+        self.option = None
+        self.action = "notes"
 
     def search(self, request_data):
         """
@@ -592,6 +618,8 @@ class SchedulerInterface(ZoaBaseInterface):
         super().__init__(token)
         self.client = ZoaScheduler(self.token)
         self.action_name = "scheduler"
+        self.option = None
+        self.action = "scheduler"
 
     def search(self, request_data):
         """
@@ -612,6 +640,8 @@ class AIChatInterface(ZoaBaseInterface):
         super().__init__(token)
         self.client = ZoaAIChat(self.token)
         self.action_name = "ai_chat"
+        self.option = None
+        self.action = "ai_chat"
 
     def send(self, request_data):
         """
