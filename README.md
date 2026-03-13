@@ -32,13 +32,14 @@ A middleware API that acts as a bridge between external systems (automations, ch
 | users | ✅ | - | - | - | - | - |
 | cards | ✅ | ✅ | ✅ | - | - | - |
 | activities | ✅ | ✅ | ✅ | - | - | - |
-| conversations | - | - | - | ✅ | ✅ | ✅ |
+| conversations | ✅ | - | - | ✅ | ✅ | ✅ |
 | notes | ✅ | ✅ | ✅ | - | - | - |
 | tags | ✅ | ✅ | - | - | - | - |
 | departments | ✅ | - | - | - | - | - |
 | scheduler | ✅ | - | - | - | - | - |
 | readall | ✅ | - | - | - | - | - |
 | email_module | - | - | - | ✅ | - | - |
+| ai_chat | - | ✅ | ✅ | ✅ | - | - |
 
 ---
 
@@ -623,6 +624,40 @@ Send emails through ZoaSuite.
 
 ---
 
+### AI Chat Assistant
+
+Interface for interacting with the AI chat and managing tarification sheets.
+
+#### Send Message
+```json
+{
+  "company_id": "xxx",
+  "action": "ai_chat",
+  "option": "send",
+  "user_id": "user-uuid",
+  "body": {"data": "Hello assistant"},
+  "body_type": "text"
+}
+```
+
+#### Create Tarification Sheet
+```json
+{
+  "company_id": "xxx",
+  "action": "ai_chat",
+  "option": "create",
+  "user_id": "user-uuid",
+  "call_id": "call-uuid",
+  "body_type": "auto_sheet",
+  "data": {
+    "vehiculo": {"matricula": "1234ABC"},
+    "tomador": {"nombre": "John"}
+  }
+}
+```
+
+---
+
 ## Deployment
 
 ### Environment Variables
@@ -700,6 +735,7 @@ The requested operation is not supported by the module.
 zoa_flow_zoa/
 ├── main.py              # Entry point & request router
 ├── models/
+│   ├── ai_chat.py       # AI Chat and tarification sheets
 │   ├── activities.py    # Activity management
 │   ├── cards.py         # Pipeline cards (opportunities/tasks)
 │   ├── contacts.py      # Contact management

@@ -75,10 +75,6 @@ class ZoaBaseInterface:
                 return self.client.status(request_data)
             elif option == "assign_status":
                 return self.client.assign_status(request_data)
-            elif option == "delete":
-                return self.client.delete(request_data)
-            elif option == "list":
-                return self.client.list(request_data)
             else:
                 return {"error": f"La opción '{option}' no es válida para la acción '{self.action_name}'"}, 400
                 
