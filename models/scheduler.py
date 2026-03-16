@@ -10,7 +10,7 @@ class ZoaScheduler:
         self.api_base = api_base or os.getenv("API_BASE")
 
     def search(self, request_json):
-        company_id = request_json.get("company_id")
+        company_id = str(request_json.get("company_id"))
         if request_json.get("option") != "search":
             return {"error": "Opción no soportada"}, 400
         if not company_id:
@@ -20,17 +20,26 @@ class ZoaScheduler:
             docs = db.collection("clientIDs").where(
                 filter=firestore.FieldFilter("ids", "array_contains", company_id)
             ).get()
+            
             if not docs:
                 return {"error": f"Cuenta {company_id} no encontrada en Firebase"}, 404
 
             data = docs[0].to_dict() or {}
-            domains = data.get("domains") or []
-            target = next((d for d in domains if d.get("phone_id") == company_id), domains[0] if domains else None)
-            scheduler = (target or {}).get("scheduler") or data.get("scheduler", {})
+            scheduler = data.get("scheduler", {})
 
             now = datetime.now().time()
-            is_open = self._in_range(scheduler.get("morning"), now) or self._in_range(scheduler.get("afternoon"), now)
-            return {"is_open": is_open}, 200
+            morning = scheduler.get("morning")
+            afternoon = scheduler.get("afternoon")
+            
+            is_open = self._in_range(morning, now) or self._in_range(afternoon, now)
+            
+            return {
+                "is_open": is_open,
+                "schedule": {
+                    "morning": morning,
+                    "afternoon": afternoon
+                }
+            }, 200
         except Exception as e:
             return {"error": str(e)}, 500
 
