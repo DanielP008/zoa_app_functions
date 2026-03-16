@@ -1,7 +1,10 @@
 import os
 import requests
+import logging
 from urllib.parse import quote
 from models.users import ZoaUser
+
+logger = logging.getLogger(__name__)
 
 
 class ZoaContact:
@@ -122,12 +125,12 @@ class ZoaContact:
         clean = {k: v for k, v in patch_data.items() if v is not None and str(v).strip() != ""}
         
         # Log para depuración en Cloud Run
-        print(f"[DEBUG] PATCH Contact {contact_id}: {clean}")
+        logger.info(f"[DEBUG] PATCH Contact {contact_id}: {clean}")
         
         try:
             response = requests.patch(f"{self.api_base}/pipelines/contacts/{contact_id}", headers=self.headers, json=clean)
             if response.status_code != 200:
-                print(f"[ERROR] ZOA API Response: {response.text}")
+                logger.error(f"[ERROR] ZOA API Response: {response.text}")
             return response.json(), response.status_code
         except Exception as e:
             return {"error": str(e)}, 500
