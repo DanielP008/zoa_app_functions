@@ -82,6 +82,11 @@ class ZoaCardAct:
                 return res_json, response.status_code
 
             card_id = res_json.get("data", {}).get("id")
+            
+            # PATCH sync (two-step to ensure tags)
+            if card_id and tag_ids:
+                requests.patch(f"{self.api_base}/pipelines/cards/{card_id}", headers=self.headers, json={"tag_id": tag_ids})
+
             if request_json.get("type_of_activity"):
                 res_json["activity_result"] = self._create_activity(request_json, contact_id, card_id, manager_id)
 
