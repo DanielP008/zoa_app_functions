@@ -651,6 +651,34 @@ class AIChatInterface(ZoaBaseInterface):
                 - body_type (str, optional): Type of body content (default: 'text').
         """
         return self.client.send(request_data)
+    
+    def create(self, request_data):
+        """
+        Create a tarification sheet (auto_sheet / home_sheet).
+        
+        Args:
+            request_data (dict):
+                - user_id (str, required): The user ID for the chat session.
+                - body_type (str, required): "auto_sheet" or "home_sheet".
+                - call_id (str, required): Identifier of the active call.
+                - complete (str, optional): "true" or "false" (default "false").
+                - data (dict): The sheet data (vehiculo, tomador, etc.).
+        """
+        return self.client.create(request_data)
+
+    def update(self, request_data):
+        """
+        Update an existing tarification sheet.
+        
+        Args:
+            request_data (dict):
+                - user_id (str, required): The user ID for the chat session.
+                - body_type (str, required): "auto_sheet" or "home_sheet".
+                - call_id (str, required): Identifier of the active call.
+                - complete (str, optional): "true" or "false" (default "true").
+                - data (dict): The updated sheet data.
+        """
+        return self.client.update(request_data)
 
 
 # Usage example
