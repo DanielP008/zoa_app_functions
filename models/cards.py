@@ -67,7 +67,8 @@ class ZoaCard:
                 "contact_id": contact_id,
                 "card_type": c_type,
                 "amount": float(request_json.get("amount") or 0),
-                "tag_id": tag_ids
+                "tag_id": tag_ids,
+                "description": request_json.get("description")
             }
             response = requests.post(f"{self.api_base}/pipelines/cards", headers=self.headers, json=payload)
             res_json = response.json()
