@@ -93,6 +93,19 @@ class ZoaConversation2:
 
     def assign(self, request_json):
         conv_id = request_json.get("conversation_id") or request_json.get("id")
+        company_id = request_json.get("company_id")
+        
+        if not conv_id:
+            phone = request_json.get("phone") or request_json.get("customer_phone")
+            if phone:
+                try:
+                    res = requests.get(f"{self.api_base}/waba/conversations?phone_number_id={company_id}", headers=self.headers)
+                    if res.status_code == 200:
+                        items = res.json().get("items", [])
+                        found = next((c for c in items if c.get("customer_phone") == phone), None)
+                        if found: conv_id = found.get("id")
+                except Exception: pass
+
         if not conv_id:
             return {"error": "No se localizó el ID de la conversación"}, 404
 
@@ -156,7 +169,7 @@ class ZoaConversation2:
             return conv_id
         company_id = str(request_json.get("company_id") or "").strip()
         phone = str(request_json.get("phone") or request_json.get("customer_phone") or "").strip().replace("+", "")
-        return f"{company_id}_{phone}"
+        return f"{company_id}_{phone}" if company_id and phone else None
 
     def _ensure_conv_id(self, request_json, company_id):
         conv_id = self._get_conversation_id(request_json)
