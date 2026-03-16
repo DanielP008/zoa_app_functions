@@ -60,6 +60,8 @@ class ZoaCard:
                 return {"error": "Contacto no identificado"}, 404
 
             tag_ids = self._resolve_tag_ids(request_json.get("tags_name"))
+            manager_id = self._resolve_user_id(request_json.get("manager_name"))
+            
             payload = {
                 "stage_id": s_id,
                 "pipeline_id": p_id,
@@ -68,7 +70,8 @@ class ZoaCard:
                 "card_type": c_type,
                 "amount": float(request_json.get("amount") or 0),
                 "tag_id": tag_ids,
-                "description": request_json.get("description")
+                "description": request_json.get("description"),
+                "manager_id": manager_id
             }
             response = requests.post(f"{self.api_base}/pipelines/cards", headers=self.headers, json=payload)
             res_json = response.json()
@@ -102,6 +105,7 @@ class ZoaCard:
 
         tags_input = request_json.get("new_tags_name") or request_json.get("tags_name")
         tag_ids = self._resolve_tag_ids(tags_input) if tags_input else None
+        manager_id = self._resolve_user_id(request_json.get("manager_name"))
 
         patch = {
             "title": request_json.get("new_title"),
@@ -109,7 +113,8 @@ class ZoaCard:
             "stage_id": s_id,
             "tag_id": tag_ids,
             "amount": float(request_json.get("amount")) if request_json.get("amount") else None,
-            "description": request_json.get("description")
+            "description": request_json.get("description"),
+            "manager_id": manager_id
         }
         patch = {k: v for k, v in patch.items() if v is not None}
         try:
@@ -129,6 +134,19 @@ class ZoaCard:
             return data[0].get("id")
         if isinstance(data, dict):
             return data.get("id")
+        return None
+
+    def _resolve_user_id(self, name):
+        if not name:
+            return None
+        u_res, u_status = self.user_manager.search({"name": name})
+        if u_status != 200:
+            return None
+        u_data = u_res.get("data")
+        if isinstance(u_data, list) and u_data:
+            return u_data[0].get("id")
+        if isinstance(u_data, dict):
+            return u_data.get("id")
         return None
 
     def _resolve_tag_ids(self, tags_name):
