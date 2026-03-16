@@ -79,8 +79,11 @@ class ZoaContact:
     def update(self, request_json):
         contact_id = request_json.get("contact_id")
         if not contact_id:
+            # Intentar búsqueda con los datos originales (pueden traer prefijo o no)
             c_res, _ = self.search(request_json)
             contact_id = self._extract_id(c_res)
+            
+            # Si no se encuentra y hay un nombre, intentar por nombre
             if not contact_id and request_json.get("name"):
                 c_res, _ = self.search({"name": request_json["name"]})
                 contact_id = self._extract_id(c_res)
@@ -95,12 +98,24 @@ class ZoaContact:
             if u_status == 200:
                 manager_id = self._extract_id(u_res)
 
+        # Mapeo de género para la API de ZOA
+        gender_raw = request_json.get("gender")
+        gender_zoa = None
+        if gender_raw:
+            gender_map = {
+                "mujer": "Mujer",
+                "femenino": "Mujer",
+                "hombre": "Hombre",
+                "masculino": "Hombre"
+            }
+            gender_zoa = gender_map.get(str(gender_raw).lower(), gender_raw)
+
         patch_data = {
             "name": request_json.get("new_name") or request_json.get("name"),
             "mobile": request_json.get("new_phone") or request_json.get("phone") or request_json.get("mobile"),
             "email": request_json.get("email"),
             "nif": request_json.get("nif"),
-            "gender": request_json.get("gender"),
+            "gender": gender_zoa,
             "manager_id": manager_id
         }
         clean = {k: v for k, v in patch_data.items() if v is not None and v != ""}
