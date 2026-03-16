@@ -26,20 +26,22 @@ A middleware API that acts as a bridge between external systems (automations, ch
 
 ### Supported Operations
 
-| Module | Search | Create | Update | Send | Assign | Status |
-|--------|:------:|:------:|:------:|:----:|:------:|:------:|
-| contacts | ✅ | ✅ | ✅ | - | - | - |
-| users | ✅ | - | - | - | - | - |
-| cards | ✅ | ✅ | ✅ | - | - | - |
-| activities | ✅ | ✅ | ✅ | - | - | - |
-| conversations | ✅ | - | - | ✅ | ✅ | ✅ |
-| notes | ✅ | ✅ | ✅ | - | - | - |
-| tags | ✅ | ✅ | - | - | - | - |
-| departments | ✅ | - | - | - | - | - |
-| scheduler | ✅ | - | - | - | - | - |
-| readall | ✅ | - | - | - | - | - |
-| email_module | - | - | - | ✅ | - | - |
-| ai_chat | - | ✅ | ✅ | ✅ | - | - |
+| Module | Search | Create | Update | Send | Assign | Status | Process |
+|--------|:------:|:------:|:------:|:----:|:------:|:------:|:-------:|
+| contacts | ✅ | ✅ | ✅ | - | - | - | - |
+| users | ✅ | - | - | - | - | - | - |
+| cards | ✅ | ✅ | ✅ | - | - | - | - |
+| cardact | - | ✅ | ✅ | - | - | - | - |
+| activities | ✅ | ✅ | ✅ | - | - | - | - |
+| conversations | ✅ | - | - | ✅ | ✅ | ✅ | - |
+| conversations2 | - | - | - | ✅ | ✅ | ✅ | - |
+| notes | ✅ | ✅ | ✅ | - | - | - | - |
+| tags | ✅ | ✅ | - | - | - | - | - |
+| departments | ✅ | - | - | - | - | - | - |
+| scheduler | ✅ | - | - | - | - | - | - |
+| readall | ✅ | - | - | - | - | - | - |
+| email_module | - | - | - | ✅ | - | - | - |
+| ai_chat | - | ✅ | ✅ | ✅ | - | - | - |
 
 ---
 
@@ -276,7 +278,9 @@ Or search by contact:
   "pipeline_name": "Sales Pipeline",
   "stage_name": "Qualification",
   "amount": 5000,
-  "tags_name": "Hot Lead, Q1"
+  "tags_name": "Hot Lead, Q1",
+  "description": "Optional description of the card",
+  "manager_name": "Sales Agent Name"
 }
 ```
 
@@ -289,6 +293,8 @@ Or search by contact:
 | `stage_name` | string | - | Target stage (defaults to first) |
 | `amount` | number | - | Deal value |
 | `tags_name` | string | - | Comma-separated tag names |
+| `description` | string | - | Card description |
+| `manager_name` | string | - | Assigned manager (resolved automatically) |
 
 #### Update Card
 
@@ -300,7 +306,56 @@ Or search by contact:
   "title": "Deal Name",
   "new_title": "Updated Deal",
   "new_stage_name": "Negotiation",
-  "amount": 7500
+  "amount": 7500,
+  "description": "Updated description",
+  "manager_name": "New Manager Name"
+}
+```
+
+---
+
+### CardAct (Card + Activity)
+
+Create or update a card and an associated activity in a single request.
+
+#### Create Card + Activity
+
+```json
+{
+  "company_id": "xxx",
+  "action": "cardact",
+  "option": "create",
+  "title": "New Deal",
+  "phone": "+34612345678",
+  "card_type": "opportunity",
+  "amount": 1000,
+  "description": "Card description",
+  "manager_name": "Agent Name",
+  "type_of_activity": "llamada",
+  "activity_title": "Intro Call",
+  "activity_description": "Discuss requirements",
+  "date": "2024-02-01",
+  "start_time": "10:00",
+  "duration": "30",
+  "guests_names": "Support Agent"
+}
+```
+
+#### Update Card + Activity
+
+```json
+{
+  "company_id": "xxx",
+  "action": "cardact",
+  "option": "update",
+  "title": "New Deal",
+  "new_title": "Updated Deal",
+  "description": "Updated card description",
+  "manager_name": "New Agent",
+  "type_of_activity": "reunion",
+  "activity_title": "Follow-up Meeting",
+  "date": "2024-02-05",
+  "start_time": "15:00"
 }
 ```
 
