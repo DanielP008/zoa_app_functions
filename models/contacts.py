@@ -136,6 +136,7 @@ class ZoaContact:
 
     def _search_by_phone(self, base, phone):
         raw = str(phone).strip().replace(" ", "")
+        # Try 1: With '+' prefix
         clean_plus = raw if raw.startswith("+") else "+" + raw
         try:
             response = requests.get(f"{base}/mobile/{clean_plus}", headers=self.headers)
@@ -143,12 +144,24 @@ class ZoaContact:
             if response.status_code == 200 and data.get("success"):
                 self._enrich_with_manager_name(data)
                 return data, 200
-            if not raw.startswith("+"):
-                resp2 = requests.get(f"{base}/mobile/{raw}", headers=self.headers)
-                data2 = resp2.json()
-                if resp2.status_code == 200 and data2.get("success"):
-                    self._enrich_with_manager_name(data2)
-                return data2, resp2.status_code
+
+            # Try 2: Without '+' prefix
+            raw_no_plus = raw.replace("+", "")
+            resp2 = requests.get(f"{base}/mobile/{raw_no_plus}", headers=self.headers)
+            data2 = resp2.json()
+            if resp2.status_code == 200 and data2.get("success"):
+                self._enrich_with_manager_name(data2)
+                return data2, 200
+
+            # Try 3: If it had a prefix (like +34), try without the prefix (last 9 digits)
+            if len(raw_no_plus) > 9:
+                last_9 = raw_no_plus[-9:]
+                resp3 = requests.get(f"{base}/mobile/{last_9}", headers=self.headers)
+                data3 = resp3.json()
+                if resp3.status_code == 200 and data3.get("success"):
+                    self._enrich_with_manager_name(data3)
+                    return data3, 200
+
             return data, response.status_code
         except Exception as e:
             return {"error": str(e)}, 500
