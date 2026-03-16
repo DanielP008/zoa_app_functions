@@ -101,24 +101,12 @@ class ZoaContact:
             if u_status == 200:
                 manager_id = self._extract_id(u_res)
 
-        # Mapeo de género para la API de ZOA
-        gender_raw = request_json.get("gender")
-        gender_zoa = None
-        if gender_raw:
-            gender_map = {
-                "mujer": "Mujer",
-                "femenino": "Mujer",
-                "hombre": "Hombre",
-                "masculino": "Hombre"
-            }
-            gender_zoa = gender_map.get(str(gender_raw).lower(), gender_raw)
-
         patch_data = {
             "name": request_json.get("new_name") or request_json.get("name"),
             "mobile": request_json.get("new_phone") or request_json.get("phone") or request_json.get("mobile"),
             "email": request_json.get("email"),
             "nif": request_json.get("nif"),
-            "gender": gender_zoa,
+            "gender": request_json.get("gender"),
             "manager_id": manager_id
         }
         # Solo enviamos campos que tengan valor y no sean strings vacíos
