@@ -1,50 +1,35 @@
+import os
 import requests
+
 
 class ZoaTags:
     def __init__(self, token=None, api_base=None):
-        import os
-        # Use env vars directly (Global configuration)
         self.token = token or os.getenv("TOKEN")
         self.api_base = api_base or os.getenv("API_BASE")
         self.headers = {
             "Content-Type": "application/json",
             "Accept": "application/json",
-            "apiKey": f"{self.token}"
+            "apiKey": self.token
         }
 
     def search(self, request_json=None):
-        """
-        Gets all tags for the tenant.
-        Endpoint: GET /api/pipelines/tags
-        """
-        url = f"{self.api_base}/pipelines/tags"
-        
         try:
-            response = requests.get(url, headers=self.headers)
-            
-            # Return json and status code for main.py to handle
+            response = requests.get(f"{self.api_base}/pipelines/tags", headers=self.headers)
             return response.json(), response.status_code
-            
         except Exception as e:
             return {"error": f"Error al obtener etiquetas: {str(e)}"}, 500
-    
+
     def create(self, request_json):
-        url = f"{self.api_base}/pipelines/tags"
-        
-        # Type must be 'sales' so it appears in the card selector
-        tag_type = request_json.get("type", "sales") 
-        
+        name = request_json.get("name")
+        if not name:
+            return {"error": "El nombre es obligatorio"}, 400
         payload = {
-            "name": request_json.get("name"),
-            "type": tag_type,
+            "name": name,
+            "type": request_json.get("type", "sales"),
             "color": request_json.get("color", "#04A37C")
         }
-
-        if not payload["name"]:
-            return {"error": "El nombre es obligatorio"}, 400
-
         try:
-            response = requests.post(url, headers=self.headers, json=payload)
+            response = requests.post(f"{self.api_base}/pipelines/tags", headers=self.headers, json=payload)
             return response.json(), response.status_code
         except Exception as e:
             return {"error": str(e)}, 500
