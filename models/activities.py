@@ -44,7 +44,7 @@ class ZoaActivity:
             "type_of_activity": request_json.get("type_of_activity", "llamada"),
             "contact_id": contact_id,
             "card_id": card_id,
-            "type": request_json.get("type", "sales"),
+            "type": request_json.get("type", "task" if str(request_json.get("card_type", "")).lower() == "task" else "sales"),
             "date": request_json.get("date"),
             "start_time": request_json.get("start_time"),
             "duration": str(request_json.get("duration") or "30"),
