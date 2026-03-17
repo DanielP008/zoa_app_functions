@@ -138,6 +138,8 @@ class ZoaCardAct:
                 now = datetime.now()
                 raw_time = request_json.get("start_time")
                 clean_time = raw_time[:5] if raw_time and len(raw_time) > 5 else raw_time
+                c_type = str(request_json.get("card_type", "opportunity")).lower()
+                activity_type = "management" if c_type == "task" else "sales"
 
                 act_payload = {
                     "title": request_json.get("activity_title") or "Nueva Actividad",
@@ -145,7 +147,7 @@ class ZoaCardAct:
                     "description": request_json.get("activity_description"),
                     "contact_id": contact_id,
                     "card_id": card_id,
-                    "type": request_json.get("type", "task" if str(request_json.get("card_type", "")).lower() == "task" else "sales"),
+                    "type": activity_type,
                     "date": request_json.get("date") or now.strftime("%Y-%m-%d"),
                     "start_time": clean_time or now.strftime("%H:%M"),
                     "duration": str(request_json.get("duration") or "30"),
@@ -280,12 +282,14 @@ class ZoaCardAct:
     def _create_activity(self, request_json, contact_id, card_id, manager_id):
         now = datetime.now()
         guests_ids = self._resolve_guests(request_json.get("guests_names"))
+        c_type = str(request_json.get("card_type", "opportunity")).lower()
+        activity_type = "management" if c_type == "task" else "sales"
         payload = {
             "title": request_json.get("activity_title") or f"Actividad: {request_json.get('title')}",
             "type_of_activity": request_json.get("type_of_activity", "llamada"),
             "contact_id": contact_id,
             "card_id": card_id,
-            "type": request_json.get("type", "task" if str(request_json.get("card_type", "")).lower() == "task" else "sales"),
+            "type": activity_type,
             "date": request_json.get("date") or now.strftime("%Y-%m-%d"),
             "start_time": request_json.get("start_time") or now.strftime("%H:%M"),
             "duration": str(request_json.get("duration") or "30"),
