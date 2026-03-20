@@ -36,7 +36,7 @@ A middleware API that acts as a bridge between external systems (automations, ch
 | conversations | ✅ | - | - | ✅ | ✅ | ✅ | - |
 | conversations2 | - | - | - | ✅ | ✅ | ✅ | - |
 | notes | ✅ | ✅ | ✅ | - | - | - | - |
-| tags | ✅ | ✅ | - | - | - | - | - |
+| tags | ✅ | ✅ | ✅ | - | - | - | - |
 | departments | ✅ | - | - | - | - | - | - |
 | scheduler | ✅ | - | - | - | - | - | - |
 | readall | ✅ | - | - | - | - | - | - |
@@ -564,6 +564,32 @@ Manage pipeline tags/labels.
   "name": "VIP Client",
   "type": "sales",
   "color": "#FF5722"
+}
+```
+
+#### Update Card Tags
+
+Update tags for a specific card. You can provide tag names (resolved automatically) or direct tag IDs.
+
+```json
+{
+  "company_id": "xxx",
+  "action": "tags",
+  "option": "update",
+  "card_id": "card-uuid",
+  "tags_name": "VIP Client, Priority"
+}
+```
+
+Or using direct IDs:
+
+```json
+{
+  "company_id": "xxx",
+  "action": "tags",
+  "option": "update",
+  "card_id": "card-uuid",
+  "tag_id": ["tag-uuid-1", "tag-uuid-2"]
 }
 ```
 
