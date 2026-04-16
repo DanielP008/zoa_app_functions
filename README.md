@@ -2,6 +2,8 @@
 
 A middleware API that acts as a bridge between external systems (automations, chatbots, integrations) and the **ZoaSuite CRM API**. Built as a Google Cloud Function with Docker support for flexible deployment.
 
+> **Note**: This project was developed during my time at **Zoa Suite**, where I was responsible for building and maintaining this repository to handle the middleware logic described in this documentation.
+
 ## Table of Contents
 
 - [Overview](#overview)
