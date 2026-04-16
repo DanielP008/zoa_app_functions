@@ -82,7 +82,7 @@ A middleware API that acts as a bridge between external systems (automations, ch
 
 ```bash
 # Clone the repository
-git clone <repository-url>
+git clone https://github.com/DanielP008/zoa_app_functions.git
 cd zoa_flow_zoa
 
 # Install dependencies
