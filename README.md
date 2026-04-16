@@ -837,10 +837,7 @@ zoa_flow_zoa/
 
 ## License
 
-Proprietary - ZoaSuite
+Proprietary - DanielP008
 
 ---
 
-## Support
-
-For issues or questions, contact the ZoaSuite development team.
